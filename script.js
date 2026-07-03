@@ -190,8 +190,8 @@ document.addEventListener('DOMContentLoaded', () => {
     if (typeof mapboxgl === 'undefined') { console.error('Mapbox GL JS not loaded'); return; }
 
     mapboxgl.accessToken = 'pk.eyJ1IjoidXJiYW5pc3RhbW5hIiwiYSI6ImNtcjRwZXprYTBlbzAyeHNhb3hyNWlvbzYifQ.sTeymBT77IZIFaEpgaVEVA';
-    const TILESET_URL  = 'mapbox://urbanistamna.2cupep4aowk8';
-    const SOURCE_LAYER = '33243bbd532277e6177e';
+    const TILESET_URL  = 'https://urbanistamna.github.io/Dashboard-NetAScore4Teens/netascore.pmtiles';
+    const SOURCE_LAYER = 'netascore_salzburg_edges';
 
     // =========================================================
     // ALL INDICATORS — full list with definitions
