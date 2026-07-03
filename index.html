@@ -1,0 +1,1061 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>NetAScore4Teens</title>
+    <link href="https://api.mapbox.com/mapbox-gl-js/v3.21.0/mapbox-gl.css" rel="stylesheet">
+    <script src="https://api.mapbox.com/mapbox-gl-js/v3.21.0/mapbox-gl.js"></script>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@latest/dist/tabler-icons.min.css">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+    <link rel="stylesheet" href="./style.css?v=8">
+</head>
+<body>
+
+<!-- ══════════════════════════════════════════
+     INTRO OVERLAY — shown on first load
+══════════════════════════════════════════ -->
+<div class="intro-overlay" id="intro-overlay">
+
+    <!-- Animated city background scene -->
+    <svg class="intro-city-bg" viewBox="0 0 1200 680" preserveAspectRatio="xMidYMid slice" xmlns="http://www.w3.org/2000/svg">
+        <!-- Sky -->
+        <rect width="1200" height="680" fill="#dceefb"/>
+        <!-- Sun -->
+        <circle cx="980" cy="90" r="52" fill="#ffe066" opacity="0.85"/>
+        <circle cx="980" cy="90" r="68" fill="#ffe066" opacity="0.18"/>
+
+        <!-- Clouds -->
+        <g class="cloud cloud-1">
+            <ellipse cx="160" cy="100" rx="70" ry="28" fill="#fff" opacity="0.82"/>
+            <ellipse cx="200" cy="88" rx="48" ry="30" fill="#fff" opacity="0.9"/>
+            <ellipse cx="120" cy="108" rx="38" ry="20" fill="#fff" opacity="0.7"/>
+        </g>
+        <g class="cloud cloud-2">
+            <ellipse cx="700" cy="70" rx="80" ry="26" fill="#fff" opacity="0.75"/>
+            <ellipse cx="740" cy="58" rx="52" ry="28" fill="#fff" opacity="0.85"/>
+            <ellipse cx="660" cy="76" rx="40" ry="20" fill="#fff" opacity="0.65"/>
+        </g>
+        <g class="cloud cloud-3">
+            <ellipse cx="440" cy="120" rx="55" ry="20" fill="#fff" opacity="0.6"/>
+            <ellipse cx="470" cy="110" rx="36" ry="22" fill="#fff" opacity="0.7"/>
+        </g>
+
+        <!-- ── LEFT BUILDINGS ── -->
+        <!-- Building A: tall narrow -->
+        <rect x="20"  y="200" width="55" height="340" rx="2" fill="#b8cce4" opacity="0.7"/>
+        <rect x="20"  y="196" width="55" height="8"   rx="2" fill="#91afc9" opacity="0.6"/>
+        <!-- windows grid A -->
+        <rect x="28" y="215" width="10" height="10" rx="1" fill="#d4eaf7" opacity="0.85"/>
+        <rect x="44" y="215" width="10" height="10" rx="1" fill="#ffe9a0" opacity="0.9"/>
+        <rect x="28" y="232" width="10" height="10" rx="1" fill="#ffe9a0" opacity="0.9"/>
+        <rect x="44" y="232" width="10" height="10" rx="1" fill="#d4eaf7" opacity="0.85"/>
+        <rect x="28" y="249" width="10" height="10" rx="1" fill="#d4eaf7" opacity="0.85"/>
+        <rect x="44" y="249" width="10" height="10" rx="1" fill="#ffe9a0" opacity="0.9"/>
+        <rect x="28" y="266" width="10" height="10" rx="1" fill="#d4eaf7" opacity="0.8"/>
+        <rect x="44" y="266" width="10" height="10" rx="1" fill="#d4eaf7" opacity="0.8"/>
+        <rect x="28" y="283" width="10" height="10" rx="1" fill="#ffe9a0" opacity="0.9"/>
+        <rect x="44" y="283" width="10" height="10" rx="1" fill="#d4eaf7" opacity="0.8"/>
+        <rect x="28" y="300" width="10" height="10" rx="1" fill="#d4eaf7" opacity="0.8"/>
+        <rect x="44" y="300" width="10" height="10" rx="1" fill="#ffe9a0" opacity="0.85"/>
+        <rect x="28" y="317" width="10" height="10" rx="1" fill="#d4eaf7" opacity="0.75"/>
+        <rect x="44" y="317" width="10" height="10" rx="1" fill="#d4eaf7" opacity="0.75"/>
+        <rect x="28" y="334" width="10" height="10" rx="1" fill="#ffe9a0" opacity="0.85"/>
+        <rect x="44" y="334" width="10" height="10" rx="1" fill="#d4eaf7" opacity="0.75"/>
+
+        <!-- Building B: wide medium -->
+        <rect x="82"  y="230" width="95" height="310" rx="2" fill="#c4d4e8" opacity="0.65"/>
+        <rect x="82"  y="226" width="95" height="8"   rx="2" fill="#a8bed6" opacity="0.6"/>
+        <!-- windows grid B -->
+        <rect x="90"  y="244" width="13" height="13" rx="1" fill="#d4eaf7" opacity="0.85"/>
+        <rect x="110" y="244" width="13" height="13" rx="1" fill="#ffe9a0" opacity="0.9"/>
+        <rect x="130" y="244" width="13" height="13" rx="1" fill="#d4eaf7" opacity="0.85"/>
+        <rect x="152" y="244" width="13" height="13" rx="1" fill="#ffe9a0" opacity="0.9"/>
+        <rect x="90"  y="264" width="13" height="13" rx="1" fill="#ffe9a0" opacity="0.85"/>
+        <rect x="110" y="264" width="13" height="13" rx="1" fill="#d4eaf7" opacity="0.85"/>
+        <rect x="130" y="264" width="13" height="13" rx="1" fill="#ffe9a0" opacity="0.9"/>
+        <rect x="152" y="264" width="13" height="13" rx="1" fill="#d4eaf7" opacity="0.8"/>
+        <rect x="90"  y="284" width="13" height="13" rx="1" fill="#d4eaf7" opacity="0.8"/>
+        <rect x="110" y="284" width="13" height="13" rx="1" fill="#ffe9a0" opacity="0.85"/>
+        <rect x="130" y="284" width="13" height="13" rx="1" fill="#d4eaf7" opacity="0.8"/>
+        <rect x="152" y="284" width="13" height="13" rx="1" fill="#d4eaf7" opacity="0.8"/>
+        <rect x="90"  y="304" width="13" height="13" rx="1" fill="#ffe9a0" opacity="0.85"/>
+        <rect x="110" y="304" width="13" height="13" rx="1" fill="#d4eaf7" opacity="0.8"/>
+        <rect x="130" y="304" width="13" height="13" rx="1" fill="#ffe9a0" opacity="0.85"/>
+        <rect x="152" y="304" width="13" height="13" rx="1" fill="#d4eaf7" opacity="0.75"/>
+        <rect x="90"  y="324" width="13" height="13" rx="1" fill="#d4eaf7" opacity="0.75"/>
+        <rect x="110" y="324" width="13" height="13" rx="1" fill="#ffe9a0" opacity="0.8"/>
+        <rect x="130" y="324" width="13" height="13" rx="1" fill="#d4eaf7" opacity="0.75"/>
+        <rect x="152" y="324" width="13" height="13" rx="1" fill="#ffe9a0" opacity="0.8"/>
+        <rect x="90"  y="344" width="13" height="13" rx="1" fill="#ffe9a0" opacity="0.8"/>
+        <rect x="110" y="344" width="13" height="13" rx="1" fill="#d4eaf7" opacity="0.75"/>
+        <rect x="130" y="344" width="13" height="13" rx="1" fill="#ffe9a0" opacity="0.8"/>
+        <rect x="152" y="344" width="13" height="13" rx="1" fill="#d4eaf7" opacity="0.75"/>
+        <!-- door -->
+        <rect x="120" y="510" width="24" height="30" rx="2" fill="#8fa8c0" opacity="0.7"/>
+
+        <!-- Building C: slim tall -->
+        <rect x="186" y="175" width="50" height="365" rx="2" fill="#a9c0d8" opacity="0.62"/>
+        <rect x="186" y="171" width="50" height="8"   rx="2" fill="#8faabf" opacity="0.6"/>
+        <!-- windows C -->
+        <rect x="193" y="190" width="11" height="11" rx="1" fill="#d4eaf7" opacity="0.85"/>
+        <rect x="210" y="190" width="11" height="11" rx="1" fill="#ffe9a0" opacity="0.9"/>
+        <rect x="193" y="208" width="11" height="11" rx="1" fill="#ffe9a0" opacity="0.85"/>
+        <rect x="210" y="208" width="11" height="11" rx="1" fill="#d4eaf7" opacity="0.85"/>
+        <rect x="193" y="226" width="11" height="11" rx="1" fill="#d4eaf7" opacity="0.8"/>
+        <rect x="210" y="226" width="11" height="11" rx="1" fill="#ffe9a0" opacity="0.85"/>
+        <rect x="193" y="244" width="11" height="11" rx="1" fill="#ffe9a0" opacity="0.8"/>
+        <rect x="210" y="244" width="11" height="11" rx="1" fill="#d4eaf7" opacity="0.8"/>
+        <rect x="193" y="262" width="11" height="11" rx="1" fill="#d4eaf7" opacity="0.8"/>
+        <rect x="210" y="262" width="11" height="11" rx="1" fill="#d4eaf7" opacity="0.8"/>
+        <rect x="193" y="280" width="11" height="11" rx="1" fill="#ffe9a0" opacity="0.8"/>
+        <rect x="210" y="280" width="11" height="11" rx="1" fill="#ffe9a0" opacity="0.8"/>
+        <rect x="193" y="298" width="11" height="11" rx="1" fill="#d4eaf7" opacity="0.75"/>
+        <rect x="210" y="298" width="11" height="11" rx="1" fill="#d4eaf7" opacity="0.75"/>
+        <rect x="193" y="316" width="11" height="11" rx="1" fill="#ffe9a0" opacity="0.8"/>
+        <rect x="210" y="316" width="11" height="11" rx="1" fill="#d4eaf7" opacity="0.75"/>
+        <rect x="193" y="334" width="11" height="11" rx="1" fill="#d4eaf7" opacity="0.75"/>
+        <rect x="210" y="334" width="11" height="11" rx="1" fill="#ffe9a0" opacity="0.75"/>
+
+        <!-- ── RIGHT BUILDINGS ── -->
+        <!-- Building D -->
+        <rect x="840" y="210" width="75" height="330" rx="2" fill="#b8cce4" opacity="0.68"/>
+        <rect x="840" y="206" width="75" height="8" rx="2" fill="#91afc9" opacity="0.6"/>
+        <!-- windows D -->
+        <rect x="850" y="225" width="13" height="13" rx="1" fill="#d4eaf7" opacity="0.85"/>
+        <rect x="870" y="225" width="13" height="13" rx="1" fill="#ffe9a0" opacity="0.9"/>
+        <rect x="890" y="225" width="13" height="13" rx="1" fill="#d4eaf7" opacity="0.85"/>
+        <rect x="850" y="245" width="13" height="13" rx="1" fill="#ffe9a0" opacity="0.9"/>
+        <rect x="870" y="245" width="13" height="13" rx="1" fill="#d4eaf7" opacity="0.85"/>
+        <rect x="890" y="245" width="13" height="13" rx="1" fill="#ffe9a0" opacity="0.85"/>
+        <rect x="850" y="265" width="13" height="13" rx="1" fill="#d4eaf7" opacity="0.8"/>
+        <rect x="870" y="265" width="13" height="13" rx="1" fill="#ffe9a0" opacity="0.85"/>
+        <rect x="890" y="265" width="13" height="13" rx="1" fill="#d4eaf7" opacity="0.8"/>
+        <rect x="850" y="285" width="13" height="13" rx="1" fill="#ffe9a0" opacity="0.85"/>
+        <rect x="870" y="285" width="13" height="13" rx="1" fill="#d4eaf7" opacity="0.8"/>
+        <rect x="890" y="285" width="13" height="13" rx="1" fill="#d4eaf7" opacity="0.8"/>
+        <rect x="850" y="305" width="13" height="13" rx="1" fill="#d4eaf7" opacity="0.8"/>
+        <rect x="870" y="305" width="13" height="13" rx="1" fill="#ffe9a0" opacity="0.8"/>
+        <rect x="890" y="305" width="13" height="13" rx="1" fill="#ffe9a0" opacity="0.8"/>
+        <rect x="850" y="325" width="13" height="13" rx="1" fill="#ffe9a0" opacity="0.75"/>
+        <rect x="870" y="325" width="13" height="13" rx="1" fill="#d4eaf7" opacity="0.75"/>
+        <rect x="890" y="325" width="13" height="13" rx="1" fill="#d4eaf7" opacity="0.75"/>
+        <rect x="850" y="345" width="13" height="13" rx="1" fill="#d4eaf7" opacity="0.75"/>
+        <rect x="870" y="345" width="13" height="13" rx="1" fill="#ffe9a0" opacity="0.75"/>
+        <rect x="890" y="345" width="13" height="13" rx="1" fill="#d4eaf7" opacity="0.75"/>
+
+        <!-- Building E: wide -->
+        <rect x="924" y="235" width="100" height="305" rx="2" fill="#c4d4e8" opacity="0.62"/>
+        <rect x="924" y="231" width="100" height="8"   rx="2" fill="#a8bed6" opacity="0.6"/>
+        <!-- windows E -->
+        <rect x="933" y="250" width="14" height="14" rx="1" fill="#ffe9a0" opacity="0.9"/>
+        <rect x="953" y="250" width="14" height="14" rx="1" fill="#d4eaf7" opacity="0.85"/>
+        <rect x="973" y="250" width="14" height="14" rx="1" fill="#ffe9a0" opacity="0.9"/>
+        <rect x="993" y="250" width="14" height="14" rx="1" fill="#d4eaf7" opacity="0.85"/>
+        <rect x="933" y="272" width="14" height="14" rx="1" fill="#d4eaf7" opacity="0.85"/>
+        <rect x="953" y="272" width="14" height="14" rx="1" fill="#ffe9a0" opacity="0.9"/>
+        <rect x="973" y="272" width="14" height="14" rx="1" fill="#d4eaf7" opacity="0.85"/>
+        <rect x="993" y="272" width="14" height="14" rx="1" fill="#ffe9a0" opacity="0.85"/>
+        <rect x="933" y="294" width="14" height="14" rx="1" fill="#ffe9a0" opacity="0.85"/>
+        <rect x="953" y="294" width="14" height="14" rx="1" fill="#d4eaf7" opacity="0.8"/>
+        <rect x="973" y="294" width="14" height="14" rx="1" fill="#ffe9a0" opacity="0.85"/>
+        <rect x="993" y="294" width="14" height="14" rx="1" fill="#d4eaf7" opacity="0.8"/>
+        <rect x="933" y="316" width="14" height="14" rx="1" fill="#d4eaf7" opacity="0.8"/>
+        <rect x="953" y="316" width="14" height="14" rx="1" fill="#ffe9a0" opacity="0.85"/>
+        <rect x="973" y="316" width="14" height="14" rx="1" fill="#d4eaf7" opacity="0.8"/>
+        <rect x="993" y="316" width="14" height="14" rx="1" fill="#ffe9a0" opacity="0.8"/>
+        <rect x="933" y="338" width="14" height="14" rx="1" fill="#ffe9a0" opacity="0.8"/>
+        <rect x="953" y="338" width="14" height="14" rx="1" fill="#d4eaf7" opacity="0.8"/>
+        <rect x="973" y="338" width="14" height="14" rx="1" fill="#ffe9a0" opacity="0.8"/>
+        <rect x="993" y="338" width="14" height="14" rx="1" fill="#d4eaf7" opacity="0.75"/>
+        <rect x="933" y="360" width="14" height="14" rx="1" fill="#d4eaf7" opacity="0.75"/>
+        <rect x="953" y="360" width="14" height="14" rx="1" fill="#ffe9a0" opacity="0.78"/>
+        <rect x="973" y="360" width="14" height="14" rx="1" fill="#d4eaf7" opacity="0.75"/>
+        <rect x="993" y="360" width="14" height="14" rx="1" fill="#ffe9a0" opacity="0.75"/>
+        <!-- door -->
+        <rect x="960" y="508" width="24" height="32" rx="2" fill="#8fa8c0" opacity="0.7"/>
+
+        <!-- Building F: tallest right -->
+        <rect x="1033" y="170" width="62" height="370" rx="2" fill="#a9c0d8" opacity="0.6"/>
+        <rect x="1033" y="166" width="62" height="8"   rx="2" fill="#8faabf" opacity="0.6"/>
+        <!-- windows F -->
+        <rect x="1041" y="185" width="12" height="12" rx="1" fill="#d4eaf7" opacity="0.85"/>
+        <rect x="1059" y="185" width="12" height="12" rx="1" fill="#ffe9a0" opacity="0.9"/>
+        <rect x="1077" y="185" width="12" height="12" rx="1" fill="#d4eaf7" opacity="0.85"/>
+        <rect x="1041" y="204" width="12" height="12" rx="1" fill="#ffe9a0" opacity="0.85"/>
+        <rect x="1059" y="204" width="12" height="12" rx="1" fill="#d4eaf7" opacity="0.85"/>
+        <rect x="1077" y="204" width="12" height="12" rx="1" fill="#ffe9a0" opacity="0.85"/>
+        <rect x="1041" y="223" width="12" height="12" rx="1" fill="#d4eaf7" opacity="0.8"/>
+        <rect x="1059" y="223" width="12" height="12" rx="1" fill="#ffe9a0" opacity="0.85"/>
+        <rect x="1077" y="223" width="12" height="12" rx="1" fill="#d4eaf7" opacity="0.8"/>
+        <rect x="1041" y="242" width="12" height="12" rx="1" fill="#ffe9a0" opacity="0.8"/>
+        <rect x="1059" y="242" width="12" height="12" rx="1" fill="#d4eaf7" opacity="0.8"/>
+        <rect x="1077" y="242" width="12" height="12" rx="1" fill="#ffe9a0" opacity="0.8"/>
+        <rect x="1041" y="261" width="12" height="12" rx="1" fill="#d4eaf7" opacity="0.8"/>
+        <rect x="1059" y="261" width="12" height="12" rx="1" fill="#d4eaf7" opacity="0.8"/>
+        <rect x="1077" y="261" width="12" height="12" rx="1" fill="#d4eaf7" opacity="0.8"/>
+        <rect x="1041" y="280" width="12" height="12" rx="1" fill="#ffe9a0" opacity="0.78"/>
+        <rect x="1059" y="280" width="12" height="12" rx="1" fill="#ffe9a0" opacity="0.78"/>
+        <rect x="1077" y="280" width="12" height="12" rx="1" fill="#d4eaf7" opacity="0.75"/>
+        <rect x="1041" y="299" width="12" height="12" rx="1" fill="#d4eaf7" opacity="0.75"/>
+        <rect x="1059" y="299" width="12" height="12" rx="1" fill="#ffe9a0" opacity="0.78"/>
+        <rect x="1077" y="299" width="12" height="12" rx="1" fill="#d4eaf7" opacity="0.75"/>
+        <rect x="1041" y="318" width="12" height="12" rx="1" fill="#ffe9a0" opacity="0.75"/>
+        <rect x="1059" y="318" width="12" height="12" rx="1" fill="#d4eaf7" opacity="0.75"/>
+        <rect x="1077" y="318" width="12" height="12" rx="1" fill="#ffe9a0" opacity="0.75"/>
+
+        <!-- Building G: right edge -->
+        <rect x="1104" y="225" width="90" height="315" rx="2" fill="#b8cce4" opacity="0.55"/>
+        <rect x="1104" y="221" width="90" height="8"   rx="2" fill="#91afc9" opacity="0.55"/>
+        <!-- windows G -->
+        <rect x="1112" y="238" width="13" height="13" rx="1" fill="#d4eaf7" opacity="0.8"/>
+        <rect x="1132" y="238" width="13" height="13" rx="1" fill="#ffe9a0" opacity="0.85"/>
+        <rect x="1152" y="238" width="13" height="13" rx="1" fill="#d4eaf7" opacity="0.8"/>
+        <rect x="1172" y="238" width="13" height="13" rx="1" fill="#ffe9a0" opacity="0.8"/>
+        <rect x="1112" y="258" width="13" height="13" rx="1" fill="#ffe9a0" opacity="0.8"/>
+        <rect x="1132" y="258" width="13" height="13" rx="1" fill="#d4eaf7" opacity="0.8"/>
+        <rect x="1152" y="258" width="13" height="13" rx="1" fill="#ffe9a0" opacity="0.8"/>
+        <rect x="1172" y="258" width="13" height="13" rx="1" fill="#d4eaf7" opacity="0.8"/>
+        <rect x="1112" y="278" width="13" height="13" rx="1" fill="#d4eaf7" opacity="0.78"/>
+        <rect x="1132" y="278" width="13" height="13" rx="1" fill="#ffe9a0" opacity="0.78"/>
+        <rect x="1152" y="278" width="13" height="13" rx="1" fill="#d4eaf7" opacity="0.75"/>
+        <rect x="1172" y="278" width="13" height="13" rx="1" fill="#ffe9a0" opacity="0.75"/>
+        <rect x="1112" y="298" width="13" height="13" rx="1" fill="#ffe9a0" opacity="0.75"/>
+        <rect x="1132" y="298" width="13" height="13" rx="1" fill="#d4eaf7" opacity="0.75"/>
+        <rect x="1152" y="298" width="13" height="13" rx="1" fill="#ffe9a0" opacity="0.75"/>
+        <rect x="1172" y="298" width="13" height="13" rx="1" fill="#d4eaf7" opacity="0.75"/>
+        <rect x="1112" y="318" width="13" height="13" rx="1" fill="#d4eaf7" opacity="0.72"/>
+        <rect x="1132" y="318" width="13" height="13" rx="1" fill="#ffe9a0" opacity="0.72"/>
+        <rect x="1152" y="318" width="13" height="13" rx="1" fill="#d4eaf7" opacity="0.72"/>
+        <rect x="1172" y="318" width="13" height="13" rx="1" fill="#d4eaf7" opacity="0.72"/>
+
+        <!-- ── MID-LEFT BUILDINGS (fill empty space left of card) ── -->
+        <!-- Building M1: tall -->
+        <rect x="245" y="155" width="58" height="385" rx="2" fill="#b0c8e0" opacity="0.62"/>
+        <rect x="245" y="151" width="58" height="8" rx="2" fill="#8faabf" opacity="0.6"/>
+        <rect x="253" y="170" width="12" height="12" rx="1" fill="#d4eaf7" opacity="0.85"/>
+        <rect x="271" y="170" width="12" height="12" rx="1" fill="#ffe9a0" opacity="0.9"/>
+        <rect x="289" y="170" width="12" height="12" rx="1" fill="#d4eaf7" opacity="0.85"/>
+        <rect x="253" y="189" width="12" height="12" rx="1" fill="#ffe9a0" opacity="0.85"/>
+        <rect x="271" y="189" width="12" height="12" rx="1" fill="#d4eaf7" opacity="0.85"/>
+        <rect x="289" y="189" width="12" height="12" rx="1" fill="#ffe9a0" opacity="0.85"/>
+        <rect x="253" y="208" width="12" height="12" rx="1" fill="#d4eaf7" opacity="0.8"/>
+        <rect x="271" y="208" width="12" height="12" rx="1" fill="#ffe9a0" opacity="0.8"/>
+        <rect x="289" y="208" width="12" height="12" rx="1" fill="#d4eaf7" opacity="0.8"/>
+        <rect x="253" y="227" width="12" height="12" rx="1" fill="#ffe9a0" opacity="0.8"/>
+        <rect x="271" y="227" width="12" height="12" rx="1" fill="#d4eaf7" opacity="0.8"/>
+        <rect x="289" y="227" width="12" height="12" rx="1" fill="#ffe9a0" opacity="0.8"/>
+        <rect x="253" y="246" width="12" height="12" rx="1" fill="#d4eaf7" opacity="0.75"/>
+        <rect x="271" y="246" width="12" height="12" rx="1" fill="#d4eaf7" opacity="0.75"/>
+        <rect x="289" y="246" width="12" height="12" rx="1" fill="#ffe9a0" opacity="0.78"/>
+        <rect x="253" y="265" width="12" height="12" rx="1" fill="#ffe9a0" opacity="0.75"/>
+        <rect x="271" y="265" width="12" height="12" rx="1" fill="#d4eaf7" opacity="0.75"/>
+        <rect x="289" y="265" width="12" height="12" rx="1" fill="#d4eaf7" opacity="0.75"/>
+        <rect x="253" y="284" width="12" height="12" rx="1" fill="#d4eaf7" opacity="0.75"/>
+        <rect x="271" y="284" width="12" height="12" rx="1" fill="#ffe9a0" opacity="0.75"/>
+        <rect x="289" y="284" width="12" height="12" rx="1" fill="#d4eaf7" opacity="0.72"/>
+        <!-- door M1 -->
+        <rect x="268" y="512" width="20" height="28" rx="2" fill="#8fa8c0" opacity="0.65"/>
+
+        <!-- Building M2: wide lower -->
+        <rect x="311" y="230" width="110" height="310" rx="2" fill="#c2d5ea" opacity="0.58"/>
+        <rect x="311" y="226" width="110" height="8" rx="2" fill="#a5bdd4" opacity="0.6"/>
+        <rect x="320" y="244" width="14" height="14" rx="1" fill="#ffe9a0" opacity="0.9"/>
+        <rect x="341" y="244" width="14" height="14" rx="1" fill="#d4eaf7" opacity="0.85"/>
+        <rect x="362" y="244" width="14" height="14" rx="1" fill="#ffe9a0" opacity="0.9"/>
+        <rect x="383" y="244" width="14" height="14" rx="1" fill="#d4eaf7" opacity="0.85"/>
+        <rect x="404" y="244" width="14" height="14" rx="1" fill="#ffe9a0" opacity="0.85"/>
+        <rect x="320" y="265" width="14" height="14" rx="1" fill="#d4eaf7" opacity="0.85"/>
+        <rect x="341" y="265" width="14" height="14" rx="1" fill="#ffe9a0" opacity="0.85"/>
+        <rect x="362" y="265" width="14" height="14" rx="1" fill="#d4eaf7" opacity="0.85"/>
+        <rect x="383" y="265" width="14" height="14" rx="1" fill="#ffe9a0" opacity="0.8"/>
+        <rect x="404" y="265" width="14" height="14" rx="1" fill="#d4eaf7" opacity="0.8"/>
+        <rect x="320" y="286" width="14" height="14" rx="1" fill="#ffe9a0" opacity="0.8"/>
+        <rect x="341" y="286" width="14" height="14" rx="1" fill="#d4eaf7" opacity="0.8"/>
+        <rect x="362" y="286" width="14" height="14" rx="1" fill="#ffe9a0" opacity="0.8"/>
+        <rect x="383" y="286" width="14" height="14" rx="1" fill="#d4eaf7" opacity="0.8"/>
+        <rect x="404" y="286" width="14" height="14" rx="1" fill="#ffe9a0" opacity="0.78"/>
+        <rect x="320" y="307" width="14" height="14" rx="1" fill="#d4eaf7" opacity="0.78"/>
+        <rect x="341" y="307" width="14" height="14" rx="1" fill="#ffe9a0" opacity="0.78"/>
+        <rect x="362" y="307" width="14" height="14" rx="1" fill="#d4eaf7" opacity="0.75"/>
+        <rect x="383" y="307" width="14" height="14" rx="1" fill="#ffe9a0" opacity="0.75"/>
+        <rect x="404" y="307" width="14" height="14" rx="1" fill="#d4eaf7" opacity="0.75"/>
+        <rect x="320" y="328" width="14" height="14" rx="1" fill="#ffe9a0" opacity="0.75"/>
+        <rect x="341" y="328" width="14" height="14" rx="1" fill="#d4eaf7" opacity="0.75"/>
+        <rect x="362" y="328" width="14" height="14" rx="1" fill="#ffe9a0" opacity="0.72"/>
+        <rect x="383" y="328" width="14" height="14" rx="1" fill="#d4eaf7" opacity="0.72"/>
+        <rect x="404" y="328" width="14" height="14" rx="1" fill="#ffe9a0" opacity="0.72"/>
+        <!-- door M2 -->
+        <rect x="355" y="508" width="22" height="32" rx="2" fill="#8fa8c0" opacity="0.65"/>
+
+        <!-- Building M3: slim accent tower -->
+        <rect x="430" y="185" width="42" height="355" rx="2" fill="#a8bfd8" opacity="0.58"/>
+        <rect x="430" y="181" width="42" height="8" rx="2" fill="#8aa3bf" opacity="0.6"/>
+        <!-- antenna -->
+        <rect x="449" y="170" width="3" height="16" rx="1" fill="#999"/>
+        <circle cx="450" cy="168" r="3" fill="#e74c3c" opacity="0.8"/>
+        <rect x="436" y="200" width="11" height="11" rx="1" fill="#d4eaf7" opacity="0.85"/>
+        <rect x="453" y="200" width="11" height="11" rx="1" fill="#ffe9a0" opacity="0.9"/>
+        <rect x="436" y="218" width="11" height="11" rx="1" fill="#ffe9a0" opacity="0.85"/>
+        <rect x="453" y="218" width="11" height="11" rx="1" fill="#d4eaf7" opacity="0.85"/>
+        <rect x="436" y="236" width="11" height="11" rx="1" fill="#d4eaf7" opacity="0.8"/>
+        <rect x="453" y="236" width="11" height="11" rx="1" fill="#ffe9a0" opacity="0.8"/>
+        <rect x="436" y="254" width="11" height="11" rx="1" fill="#ffe9a0" opacity="0.8"/>
+        <rect x="453" y="254" width="11" height="11" rx="1" fill="#d4eaf7" opacity="0.8"/>
+        <rect x="436" y="272" width="11" height="11" rx="1" fill="#d4eaf7" opacity="0.78"/>
+        <rect x="453" y="272" width="11" height="11" rx="1" fill="#ffe9a0" opacity="0.78"/>
+        <rect x="436" y="290" width="11" height="11" rx="1" fill="#ffe9a0" opacity="0.75"/>
+        <rect x="453" y="290" width="11" height="11" rx="1" fill="#d4eaf7" opacity="0.75"/>
+        <rect x="436" y="308" width="11" height="11" rx="1" fill="#d4eaf7" opacity="0.75"/>
+        <rect x="453" y="308" width="11" height="11" rx="1" fill="#ffe9a0" opacity="0.72"/>
+        <rect x="436" y="326" width="11" height="11" rx="1" fill="#ffe9a0" opacity="0.72"/>
+        <rect x="453" y="326" width="11" height="11" rx="1" fill="#d4eaf7" opacity="0.72"/>
+        <!-- door M3 -->
+        <rect x="440" y="514" width="18" height="26" rx="2" fill="#8fa8c0" opacity="0.65"/>
+
+        <!-- Building M4: medium right of cluster -->
+        <rect x="481" y="260" width="75" height="280" rx="2" fill="#b8cce0" opacity="0.55"/>
+        <rect x="481" y="256" width="75" height="8" rx="2" fill="#9ab4cc" opacity="0.55"/>
+        <rect x="489" y="274" width="13" height="13" rx="1" fill="#d4eaf7" opacity="0.82"/>
+        <rect x="508" y="274" width="13" height="13" rx="1" fill="#ffe9a0" opacity="0.85"/>
+        <rect x="527" y="274" width="13" height="13" rx="1" fill="#d4eaf7" opacity="0.82"/>
+        <rect x="489" y="294" width="13" height="13" rx="1" fill="#ffe9a0" opacity="0.82"/>
+        <rect x="508" y="294" width="13" height="13" rx="1" fill="#d4eaf7" opacity="0.82"/>
+        <rect x="527" y="294" width="13" height="13" rx="1" fill="#ffe9a0" opacity="0.8"/>
+        <rect x="489" y="314" width="13" height="13" rx="1" fill="#d4eaf7" opacity="0.78"/>
+        <rect x="508" y="314" width="13" height="13" rx="1" fill="#ffe9a0" opacity="0.78"/>
+        <rect x="527" y="314" width="13" height="13" rx="1" fill="#d4eaf7" opacity="0.78"/>
+        <rect x="489" y="334" width="13" height="13" rx="1" fill="#ffe9a0" opacity="0.75"/>
+        <rect x="508" y="334" width="13" height="13" rx="1" fill="#d4eaf7" opacity="0.75"/>
+        <rect x="527" y="334" width="13" height="13" rx="1" fill="#ffe9a0" opacity="0.75"/>
+        <rect x="489" y="354" width="13" height="13" rx="1" fill="#d4eaf7" opacity="0.72"/>
+        <rect x="508" y="354" width="13" height="13" rx="1" fill="#ffe9a0" opacity="0.72"/>
+        <rect x="527" y="354" width="13" height="13" rx="1" fill="#d4eaf7" opacity="0.72"/>
+
+
+        <!-- ── MID-RIGHT BUILDINGS (balance right of centre) ── -->
+        <!-- Building R1: tall slim -->
+        <rect x="558" y="170" width="50" height="370" rx="2" fill="#b0c4d8" opacity="0.60"/>
+        <rect x="558" y="166" width="50" height="8" rx="2" fill="#8faabf" opacity="0.6"/>
+        <rect x="566" y="185" width="11" height="11" rx="1" fill="#ffe9a0" opacity="0.88"/>
+        <rect x="583" y="185" width="11" height="11" rx="1" fill="#d4eaf7" opacity="0.85"/>
+        <rect x="566" y="203" width="11" height="11" rx="1" fill="#d4eaf7" opacity="0.85"/>
+        <rect x="583" y="203" width="11" height="11" rx="1" fill="#ffe9a0" opacity="0.88"/>
+        <rect x="566" y="221" width="11" height="11" rx="1" fill="#ffe9a0" opacity="0.82"/>
+        <rect x="583" y="221" width="11" height="11" rx="1" fill="#d4eaf7" opacity="0.82"/>
+        <rect x="566" y="239" width="11" height="11" rx="1" fill="#d4eaf7" opacity="0.80"/>
+        <rect x="583" y="239" width="11" height="11" rx="1" fill="#ffe9a0" opacity="0.80"/>
+        <rect x="566" y="257" width="11" height="11" rx="1" fill="#ffe9a0" opacity="0.78"/>
+        <rect x="583" y="257" width="11" height="11" rx="1" fill="#d4eaf7" opacity="0.78"/>
+        <rect x="566" y="275" width="11" height="11" rx="1" fill="#d4eaf7" opacity="0.75"/>
+        <rect x="583" y="275" width="11" height="11" rx="1" fill="#ffe9a0" opacity="0.75"/>
+        <rect x="566" y="293" width="11" height="11" rx="1" fill="#ffe9a0" opacity="0.72"/>
+        <rect x="583" y="293" width="11" height="11" rx="1" fill="#d4eaf7" opacity="0.72"/>
+        <rect x="572" y="508" width="18" height="28" rx="2" fill="#8fa8c0" opacity="0.60"/>
+
+        <!-- Building R2: wide medium -->
+        <rect x="616" y="240" width="105" height="300" rx="2" fill="#c0d2e6" opacity="0.56"/>
+        <rect x="616" y="236" width="105" height="8" rx="2" fill="#a4bdd4" opacity="0.58"/>
+        <rect x="625" y="254" width="13" height="13" rx="1" fill="#d4eaf7" opacity="0.85"/>
+        <rect x="645" y="254" width="13" height="13" rx="1" fill="#ffe9a0" opacity="0.88"/>
+        <rect x="665" y="254" width="13" height="13" rx="1" fill="#d4eaf7" opacity="0.85"/>
+        <rect x="685" y="254" width="13" height="13" rx="1" fill="#ffe9a0" opacity="0.85"/>
+        <rect x="705" y="254" width="13" height="13" rx="1" fill="#d4eaf7" opacity="0.82"/>
+        <rect x="625" y="274" width="13" height="13" rx="1" fill="#ffe9a0" opacity="0.82"/>
+        <rect x="645" y="274" width="13" height="13" rx="1" fill="#d4eaf7" opacity="0.82"/>
+        <rect x="665" y="274" width="13" height="13" rx="1" fill="#ffe9a0" opacity="0.82"/>
+        <rect x="685" y="274" width="13" height="13" rx="1" fill="#d4eaf7" opacity="0.80"/>
+        <rect x="705" y="274" width="13" height="13" rx="1" fill="#ffe9a0" opacity="0.80"/>
+        <rect x="625" y="294" width="13" height="13" rx="1" fill="#d4eaf7" opacity="0.78"/>
+        <rect x="645" y="294" width="13" height="13" rx="1" fill="#ffe9a0" opacity="0.78"/>
+        <rect x="665" y="294" width="13" height="13" rx="1" fill="#d4eaf7" opacity="0.78"/>
+        <rect x="685" y="294" width="13" height="13" rx="1" fill="#ffe9a0" opacity="0.78"/>
+        <rect x="705" y="294" width="13" height="13" rx="1" fill="#d4eaf7" opacity="0.75"/>
+        <rect x="625" y="314" width="13" height="13" rx="1" fill="#ffe9a0" opacity="0.75"/>
+        <rect x="645" y="314" width="13" height="13" rx="1" fill="#d4eaf7" opacity="0.75"/>
+        <rect x="665" y="314" width="13" height="13" rx="1" fill="#ffe9a0" opacity="0.75"/>
+        <rect x="685" y="314" width="13" height="13" rx="1" fill="#d4eaf7" opacity="0.72"/>
+        <rect x="705" y="314" width="13" height="13" rx="1" fill="#ffe9a0" opacity="0.72"/>
+        <rect x="625" y="334" width="13" height="13" rx="1" fill="#d4eaf7" opacity="0.70"/>
+        <rect x="645" y="334" width="13" height="13" rx="1" fill="#ffe9a0" opacity="0.70"/>
+        <rect x="665" y="334" width="13" height="13" rx="1" fill="#d4eaf7" opacity="0.70"/>
+        <rect x="685" y="334" width="13" height="13" rx="1" fill="#ffe9a0" opacity="0.70"/>
+        <rect x="705" y="334" width="13" height="13" rx="1" fill="#d4eaf7" opacity="0.68"/>
+        <rect x="655" y="510" width="22" height="30" rx="2" fill="#8fa8c0" opacity="0.60"/>
+
+        <!-- Building R3: narrow accent -->
+        <rect x="730" y="205" width="44" height="335" rx="2" fill="#a6bcd6" opacity="0.57"/>
+        <rect x="730" y="201" width="44" height="8" rx="2" fill="#8aa3be" opacity="0.58"/>
+        <rect x="745" y="188" width="3" height="18" rx="1" fill="#aaa"/>
+        <circle cx="746" cy="186" r="3.5" fill="#3b82f6" opacity="0.75"/>
+        <rect x="737" y="220" width="11" height="11" rx="1" fill="#ffe9a0" opacity="0.88"/>
+        <rect x="754" y="220" width="11" height="11" rx="1" fill="#d4eaf7" opacity="0.85"/>
+        <rect x="737" y="238" width="11" height="11" rx="1" fill="#d4eaf7" opacity="0.85"/>
+        <rect x="754" y="238" width="11" height="11" rx="1" fill="#ffe9a0" opacity="0.85"/>
+        <rect x="737" y="256" width="11" height="11" rx="1" fill="#ffe9a0" opacity="0.80"/>
+        <rect x="754" y="256" width="11" height="11" rx="1" fill="#d4eaf7" opacity="0.80"/>
+        <rect x="737" y="274" width="11" height="11" rx="1" fill="#d4eaf7" opacity="0.78"/>
+        <rect x="754" y="274" width="11" height="11" rx="1" fill="#ffe9a0" opacity="0.78"/>
+        <rect x="737" y="292" width="11" height="11" rx="1" fill="#ffe9a0" opacity="0.75"/>
+        <rect x="754" y="292" width="11" height="11" rx="1" fill="#d4eaf7" opacity="0.75"/>
+        <rect x="737" y="310" width="11" height="11" rx="1" fill="#d4eaf7" opacity="0.72"/>
+        <rect x="754" y="310" width="11" height="11" rx="1" fill="#ffe9a0" opacity="0.72"/>
+        <rect x="737" y="328" width="11" height="11" rx="1" fill="#ffe9a0" opacity="0.70"/>
+        <rect x="754" y="328" width="11" height="11" rx="1" fill="#d4eaf7" opacity="0.70"/>
+        <rect x="738" y="510" width="19" height="26" rx="2" fill="#8fa8c0" opacity="0.60"/>
+        <!-- Park ground -->
+        <ellipse cx="600" cy="600" rx="700" ry="160" fill="#a8d5a2" opacity="0.55"/>
+        <!-- Ground / road -->
+        <rect x="0" y="530" width="1200" height="150" fill="#c8d8c0" opacity="0.7"/>
+        <!-- Footpath -->
+        <rect x="0" y="548" width="1200" height="18" fill="#e8e0d0" opacity="0.75"/>
+        <!-- Road surface -->
+        <rect x="0" y="572" width="1200" height="80" fill="#d4cfc4" opacity="0.65"/>
+        <!-- Road markings -->
+        <rect x="80"  y="608" width="60" height="6" rx="3" fill="#fff" opacity="0.6"/>
+        <rect x="220" y="608" width="60" height="6" rx="3" fill="#fff" opacity="0.6"/>
+        <rect x="360" y="608" width="60" height="6" rx="3" fill="#fff" opacity="0.6"/>
+        <rect x="500" y="608" width="60" height="6" rx="3" fill="#fff" opacity="0.6"/>
+        <rect x="640" y="608" width="60" height="6" rx="3" fill="#fff" opacity="0.6"/>
+        <rect x="780" y="608" width="60" height="6" rx="3" fill="#fff" opacity="0.6"/>
+        <rect x="920" y="608" width="60" height="6" rx="3" fill="#fff" opacity="0.6"/>
+        <rect x="1060" y="608" width="60" height="6" rx="3" fill="#fff" opacity="0.6"/>
+
+        <!-- Trees -->
+        <g class="tree tree-sway">
+            <rect x="256" y="470" width="10" height="70" rx="3" fill="#8B6914"/>
+            <ellipse cx="261" cy="450" rx="32" ry="36" fill="#4a9e52"/>
+            <ellipse cx="248" cy="460" rx="20" ry="24" fill="#5cb85c"/>
+        </g>
+        <g class="tree tree-sway-slow">
+            <rect x="336" y="480" width="8" height="60" rx="3" fill="#8B6914"/>
+            <ellipse cx="340" cy="462" rx="26" ry="30" fill="#3d8b46"/>
+            <ellipse cx="330" cy="470" rx="16" ry="20" fill="#4a9e52"/>
+        </g>
+        <g class="tree tree-sway">
+            <rect x="820" y="472" width="10" height="68" rx="3" fill="#8B6914"/>
+            <ellipse cx="825" cy="452" rx="30" ry="34" fill="#4a9e52"/>
+            <ellipse cx="813" cy="462" rx="19" ry="22" fill="#5cb85c"/>
+        </g>
+        <g class="tree tree-sway-slow">
+            <rect x="900" y="478" width="9" height="62" rx="3" fill="#8B6914"/>
+            <ellipse cx="904" cy="458" rx="28" ry="32" fill="#3d8b46"/>
+        </g>
+
+        <!-- Bench left -->
+        <rect x="280" y="534" width="55" height="8"  rx="3" fill="#a07850"/>
+        <rect x="285" y="542" width="6"  height="14" rx="2" fill="#8B6432"/>
+        <rect x="323" y="542" width="6"  height="14" rx="2" fill="#8B6432"/>
+        <rect x="280" y="527" width="55" height="6"  rx="2" fill="#b8906a"/>
+
+        <!-- Bench right -->
+        <rect x="850" y="534" width="55" height="8"  rx="3" fill="#a07850"/>
+        <rect x="855" y="542" width="6"  height="14" rx="2" fill="#8B6432"/>
+        <rect x="893" y="542" width="6"  height="14" rx="2" fill="#8B6432"/>
+        <rect x="850" y="527" width="55" height="6"  rx="2" fill="#b8906a"/>
+
+        <!-- Bus (animated moving right) -->
+        <g class="bus-move">
+            <rect x="0" y="572" width="115" height="52" rx="8" fill="#378ADD"/>
+            <rect x="5" y="575" width="105" height="38" rx="6" fill="#2563b0"/>
+            <!-- windows -->
+            <rect x="12" y="580" width="18" height="14" rx="3" fill="#d4eaf7" opacity="0.9"/>
+            <rect x="36" y="580" width="18" height="14" rx="3" fill="#d4eaf7" opacity="0.9"/>
+            <rect x="60" y="580" width="18" height="14" rx="3" fill="#d4eaf7" opacity="0.9"/>
+            <rect x="84" y="580" width="18" height="14" rx="3" fill="#d4eaf7" opacity="0.9"/>
+            <!-- wheels -->
+            <circle cx="22"  cy="626" r="10" fill="#333"/>
+            <circle cx="22"  cy="626" r="5"  fill="#888"/>
+            <circle cx="90"  cy="626" r="10" fill="#333"/>
+            <circle cx="90"  cy="626" r="5"  fill="#888"/>
+            <!-- front light -->
+            <rect x="108" y="590" width="6" height="8" rx="2" fill="#ffe066" opacity="0.9"/>
+        </g>
+
+        <!-- Cycling child (animated, rides on footpath, faster than walkers) -->
+        <g class="bike-move">
+            <!-- Bicycle frame -->
+            <circle cx="18" cy="536" r="10" fill="none" stroke="#555" stroke-width="2.5"/>
+            <circle cx="46" cy="536" r="10" fill="none" stroke="#555" stroke-width="2.5"/>
+            <!-- frame lines -->
+            <line x1="18" y1="536" x2="32" y2="516" stroke="#555" stroke-width="2"/>
+            <line x1="46" y1="536" x2="32" y2="516" stroke="#555" stroke-width="2"/>
+            <line x1="18" y1="536" x2="46" y2="536" stroke="#777" stroke-width="1.5"/>
+            <line x1="32" y1="516" x2="46" y2="524" stroke="#555" stroke-width="2"/>
+            <!-- handlebar -->
+            <line x1="44" y1="520" x2="52" y2="516" stroke="#555" stroke-width="2"/>
+            <line x1="52" y1="514" x2="52" y2="520" stroke="#555" stroke-width="2.5"/>
+            <!-- seat -->
+            <line x1="30" y1="514" x2="30" y2="520" stroke="#555" stroke-width="2"/>
+            <rect x="25" y="512" width="12" height="4" rx="2" fill="#a07850"/>
+            <!-- pedal crank -->
+            <circle cx="32" cy="528" r="4" fill="none" stroke="#888" stroke-width="1.5"/>
+            <!-- Rider body -->
+            <rect x="28" y="494" width="12" height="20" rx="4" fill="#ef4444"/>
+            <!-- Rider head -->
+            <circle cx="34" cy="487" r="9" fill="#f9c784"/>
+            <!-- Helmet -->
+            <ellipse cx="34" cy="481" rx="10" ry="6" fill="#f97316"/>
+            <rect x="24" y="483" width="20" height="4" rx="2" fill="#f97316"/>
+            <!-- Arms reaching to handlebar -->
+            <line x1="36" y1="500" x2="50" y2="516" stroke="#f9c784" stroke-width="3" stroke-linecap="round"/>
+            <!-- Legs on pedals -->
+            <line x1="30" y1="512" x2="26" y2="528" stroke="#1d4ed8" stroke-width="3" stroke-linecap="round"/>
+            <line x1="34" y1="512" x2="38" y2="528" stroke="#1d4ed8" stroke-width="3" stroke-linecap="round"/>
+            <!-- Backpack -->
+            <rect x="18" y="496" width="10" height="14" rx="3" fill="#7c3aed"/>
+            <!-- Wheel spokes hint -->
+            <line x1="18" y1="526" x2="18" y2="546" stroke="#999" stroke-width="1" opacity="0.5"/>
+            <line x1="13" y1="531" x2="23" y2="541" stroke="#999" stroke-width="1" opacity="0.5"/>
+            <line x1="46" y1="526" x2="46" y2="546" stroke="#999" stroke-width="1" opacity="0.5"/>
+            <line x1="41" y1="531" x2="51" y2="541" stroke="#999" stroke-width="1" opacity="0.5"/>
+        </g>
+
+        <!-- Child 1 — walking right -->
+        <g class="child-walk-r">
+            <!-- body -->
+            <rect x="390" y="502" width="14" height="22" rx="4" fill="#e05c97"/>
+            <!-- head -->
+            <circle cx="397" cy="495" r="10" fill="#f9c784"/>
+            <!-- hair -->
+            <ellipse cx="397" cy="488" rx="10" ry="6" fill="#5a3010"/>
+            <!-- legs animated -->
+            <g class="legs-r">
+                <rect x="391" y="522" width="5" height="18" rx="3" fill="#4a90d9"/>
+                <rect x="398" y="522" width="5" height="18" rx="3" fill="#4a90d9"/>
+            </g>
+            <!-- backpack -->
+            <rect x="380" y="504" width="9" height="14" rx="3" fill="#f97316"/>
+        </g>
+
+        <!-- Child 2 — walking left (other side of road) -->
+        <g class="child-walk-l">
+            <rect x="762" y="502" width="14" height="22" rx="4" fill="#7c3aed"/>
+            <circle cx="769" cy="495" r="10" fill="#f9c784"/>
+            <ellipse cx="769" cy="488" rx="10" ry="6" fill="#a0522d"/>
+            <g class="legs-l">
+                <rect x="763" y="522" width="5" height="18" rx="3" fill="#16a34a"/>
+                <rect x="770" y="522" width="5" height="18" rx="3" fill="#16a34a"/>
+            </g>
+            <rect x="776" y="504" width="9" height="14" rx="3" fill="#f59e0b"/>
+        </g>
+
+        <!-- Child 3 on bench (sitting) -->
+        <g>
+            <rect x="858" y="516" width="14" height="16" rx="4" fill="#ef4444"/>
+            <circle cx="865" cy="509" r="9"  fill="#f9c784"/>
+            <ellipse cx="865" cy="503" rx="9" ry="5" fill="#5a3010"/>
+            <!-- legs dangling -->
+            <rect x="860" y="532" width="4" height="14" rx="2" fill="#3b82f6"/>
+            <rect x="867" y="532" width="4" height="14" rx="2" fill="#3b82f6"/>
+        </g>
+
+        <!-- Birds -->
+        <g class="bird bird-1">
+            <path d="M0,0 Q5,-5 10,0 Q15,-5 20,0" stroke="#555" stroke-width="1.5" fill="none"/>
+        </g>
+        <g class="bird bird-2">
+            <path d="M0,0 Q4,-4 8,0 Q12,-4 16,0" stroke="#555" stroke-width="1.5" fill="none"/>
+        </g>
+        <g class="bird bird-3">
+            <path d="M0,0 Q3,-3 6,0 Q9,-3 12,0" stroke="#777" stroke-width="1.2" fill="none"/>
+        </g>
+        <!-- Street lamp left -->
+        <rect x="430" y="440" width="5" height="100" rx="2" fill="#888"/>
+        <rect x="420" y="438" width="25" height="5" rx="2" fill="#888"/>
+        <circle cx="432" cy="436" r="7" fill="#ffe9a0" opacity="0.9"/>
+
+        <!-- Street lamp right -->
+        <rect x="740" y="440" width="5" height="100" rx="2" fill="#888"/>
+        <rect x="730" y="438" width="25" height="5" rx="2" fill="#888"/>
+        <circle cx="742" cy="436" r="7" fill="#ffe9a0" opacity="0.9"/>
+
+        <!-- ── PETS — far left + far right, on green park ground, drawn last ── -->
+
+        <!-- CAT — far left on the green, x=50 clear of all buildings -->
+        <g class="pet-cat" transform="translate(55, 490) scale(1.4)">
+            <ellipse cx="0" cy="12" rx="18" ry="13" fill="#e8b96a"/>
+            <circle cx="0" cy="-4" r="14" fill="#e8b96a"/>
+            <polygon points="-9,-14 -16,-28 -3,-17" fill="#e8b96a"/>
+            <polygon points="9,-14 16,-28 3,-17" fill="#e8b96a"/>
+            <polygon points="-9,-15 -14,-26 -3,-18" fill="#f4c4a0"/>
+            <polygon points="9,-15 14,-26 3,-18" fill="#f4c4a0"/>
+            <circle cx="-5" cy="-6" r="3" fill="#222"/>
+            <circle cx="5" cy="-6" r="3" fill="#222"/>
+            <circle cx="-4" cy="-7" r="1" fill="#fff"/>
+            <circle cx="6" cy="-7" r="1" fill="#fff"/>
+            <ellipse cx="0" cy="-1" rx="3.5" ry="2.5" fill="#d4806a"/>
+            <path d="M-3,2 Q0,5 3,2" stroke="#b86" stroke-width="1.5" fill="none" stroke-linecap="round"/>
+            <line x1="-16" y1="-4" x2="0" y2="-2" stroke="#bbb" stroke-width="1"/>
+            <line x1="-16" y1="-1" x2="0" y2="-0.5" stroke="#bbb" stroke-width="1"/>
+            <line x1="16" y1="-4" x2="0" y2="-2" stroke="#bbb" stroke-width="1"/>
+            <path d="M16,14 Q32,4 26,-8" stroke="#e8b96a" stroke-width="6" fill="none" stroke-linecap="round"/>
+            <rect x="-14" y="22" width="8" height="12" rx="4" fill="#d4a050"/>
+            <rect x="6" y="22" width="8" height="12" rx="4" fill="#d4a050"/>
+        </g>
+
+        <!-- DOG — far right on the green, x=1080 clear of buildings -->
+        <g class="pet-dog" transform="translate(1080, 488) scale(1.4)">
+            <ellipse cx="0" cy="8" rx="24" ry="13" fill="#c49a6c"/>
+            <circle cx="22" cy="-2" r="14" fill="#c49a6c"/>
+            <ellipse cx="33" cy="2" rx="8" ry="6" fill="#b8845a"/>
+            <circle cx="37" cy="0" r="3.5" fill="#222"/>
+            <circle cx="36" cy="-1" r="1.2" fill="#fff"/>
+            <ellipse cx="18" cy="-13" rx="6" ry="11" fill="#a8703a" transform="rotate(-20 18 -13)"/>
+            <circle cx="26" cy="-4" r="3" fill="#222"/>
+            <circle cx="25" cy="-5" r="1" fill="#fff"/>
+            <path d="M-22,4 Q-38,-14 -30,-26" stroke="#c49a6c" stroke-width="7" fill="none" stroke-linecap="round"/>
+            <rect x="-16" y="18" width="8" height="16" rx="4" fill="#b8845a"/>
+            <rect x="-4" y="18" width="8" height="16" rx="4" fill="#b8845a"/>
+            <rect x="8" y="18" width="8" height="16" rx="4" fill="#b8845a"/>
+            <rect x="20" y="18" width="8" height="16" rx="4" fill="#b8845a"/>
+        </g>
+
+        <!-- PIGEON — centre footpath area, x=500 y=505 on green -->
+        <g class="pet-pigeon" transform="translate(500, 500) scale(1.3)">
+            <ellipse cx="0" cy="0" rx="18" ry="12" fill="#9aabb5"/>
+            <ellipse cx="-2" cy="0" rx="14" ry="8" fill="#8899a8" opacity="0.55"/>
+            <circle cx="16" cy="-8" r="10" fill="#b0c4cc"/>
+            <polygon points="24,-8 33,-5 24,-3" fill="#d4a050"/>
+            <circle cx="20" cy="-10" r="3" fill="#222"/>
+            <circle cx="19" cy="-11" r="1" fill="#fff"/>
+            <ellipse cx="0" cy="-2" rx="6" ry="4" fill="#7a9aaa" opacity="0.7"/>
+            <line x1="-4" y1="11" x2="-7" y2="24" stroke="#d4a050" stroke-width="3" stroke-linecap="round"/>
+            <line x1="4" y1="11" x2="7" y2="24" stroke="#d4a050" stroke-width="3" stroke-linecap="round"/>
+            <line x1="-7" y1="24" x2="-14" y2="24" stroke="#d4a050" stroke-width="2" stroke-linecap="round"/>
+            <line x1="-7" y1="24" x2="-4" y2="29" stroke="#d4a050" stroke-width="2" stroke-linecap="round"/>
+            <line x1="7" y1="24" x2="14" y2="24" stroke="#d4a050" stroke-width="2" stroke-linecap="round"/>
+            <line x1="7" y1="24" x2="4" y2="29" stroke="#d4a050" stroke-width="2" stroke-linecap="round"/>
+        </g>
+
+    </svg>
+
+    <div class="intro-card">
+
+        <!-- Logo -->
+        <div class="intro-logo-block">
+            <img src="images/logo-01.png" class="intro-logo-img" alt="NetAScore4Teens">
+        </div>
+
+        <!-- Title -->
+        <h1 class="intro-headline">Welcome to NetAScore4Teens</h1>
+
+        <!-- Animated tagline -->
+        <div class="intro-tagline-wrap">
+            <span class="intro-tagline-icon"><i class="ti ti-mood-kid"></i></span>
+            <span class="intro-tagline-text" id="intro-tagline-text"></span>
+            <span class="intro-tagline-cursor" id="intro-tagline-cursor">|</span>
+        </div>
+
+        <!-- Body -->
+        <p class="intro-body">
+            Explore how easy and safe it is for teens to walk, cycle, play, and access
+            everyday destinations. NetAScore4Teens turns city data into insights that help
+            create better places for teens.
+        </p>
+
+    </div>
+
+    <!-- CTA outside the card, below it -->
+    <button class="intro-cta" id="intro-cta-btn">
+        <i class="ti ti-walk"></i>
+        Let's explore
+        <i class="ti ti-arrow-right"></i>
+    </button>
+
+    <!-- Bottom credit text over the road -->
+    <div class="intro-credit">
+        Developed by Amna Azeem &copy; 2026
+    </div>
+
+</div>
+
+<div id="map-container">
+
+    <!-- HEADER -->
+    <div class="header-window">
+        <div class="header-content">
+            <img src="images/logo-01.png" class="header-logo" alt="NetAScore4Kids Logo">
+            <div class="header-text">
+                <div class="header-title">NetAScore4Teens</div>
+                <div class="header-sub">Streets for Young People</div>
+            </div>
+        </div>
+    </div>
+
+    <!-- LEFT PANEL -->
+    <div class="dashboard-bg">
+        <div class="panel-content">
+
+            <!-- Intro quote + dark toggle -->
+            <div class="lp-intro">
+                <div class="lp-intro-top">
+                    <p class="lp-intro-heading"><span><i class="ti ti-eye"></i> A Teen's Perspective</span></p>
+                    <div class="dark-toggle" id="dark-toggle" title="Toggle dark mode">
+                        <i class="ti ti-moon" id="dark-toggle-icon"></i>
+                    </div>
+                </div>
+                <p class="lp-intro-quote">Teens don't experience cities the same way adults do. A few minutes' walk or bike ride can feel unsafe, exciting, frustrating, or inspiring. Explore Salzburg through their lens.</p>
+            </div>
+
+            <div class="panel-section sec-explore">
+                <h3><i class="ti ti-compass"></i> What do you want to explore?</h3>
+                <div class="mode-btns">
+                    <div class="mode-btn active-walk" data-mode="walkability">
+                        <i class="ti ti-walk"></i><span>Walking</span>
+                    </div>
+                    <div class="mode-btn" data-mode="bikeability">
+                        <i class="ti ti-bike"></i><span>Biking</span>
+                    </div>
+                </div>
+            </div>
+
+            <div class="panel-section sec-filter">
+                <h3><i class="ti ti-adjustments-horizontal"></i> Filter by score</h3>
+                <div class="quality-faces">
+                    <div class="face-chip fc-bad"  data-index="0"><i class="ti ti-mood-sad"></i><span>Poor</span></div>
+                    <div class="face-chip fc-ok"   data-index="1"><i class="ti ti-mood-empty"></i><span>Average</span></div>
+                    <div class="face-chip fc-mid"  data-index="2"><i class="ti ti-mood-smile"></i><span>Moderate</span></div>
+                    <div class="face-chip fc-good" data-index="3"><i class="ti ti-mood-happy"></i><span>Good</span></div>
+                    <div class="face-chip fc-great"data-index="4"><i class="ti ti-mood-wink"></i><span>Excellent</span></div>
+                </div>
+                <div id="clear-filter" style="display:none;margin-bottom:10px;">
+                    <span class="clear-filter-btn" id="clear-filter-btn">
+                        <i class="ti ti-x"></i> Clear filter
+                    </span>
+                </div>
+                <div class="quality-track" id="quality-track">
+                    <div class="quality-bar"></div>
+                    <div class="quality-thumb" id="legend-marker"></div>
+                </div>
+                <div class="quality-labels">
+                    <span>0.0</span><span>0.25</span><span>0.50</span><span>0.75</span><span>1.0</span>
+                </div>
+                <div class="threshold-readout">
+                    Showing routes scored <strong id="threshold-value">All routes</strong>
+                </div>
+
+            </div>
+
+            <!-- POI TOGGLES -->
+            <div class="panel-section sec-poi">
+                <h3><i class="ti ti-map-pin"></i> Points of Interest</h3>
+                <div class="poi-chips">
+                    <div class="poi-chip poi-schools" data-poi="schools" data-active="false">
+                        <i class="ti ti-school"></i><span>Schools</span>
+                    </div>
+                    <div class="poi-chip poi-playgrounds" data-poi="playgrounds" data-active="false">
+                        <i class="ti ti-mood-kid"></i><span>Playgrounds</span>
+                    </div>
+                    <div class="poi-chip poi-parks" data-poi="parks" data-active="false">
+                        <i class="ti ti-trees"></i><span>Parks</span>
+                    </div>
+                    <div class="poi-chip poi-busstops" data-poi="busstops" data-active="false">
+                        <i class="ti ti-bus"></i><span>Bus stops</span>
+                    </div>
+                </div>
+            </div>
+
+        </div>
+    </div>
+
+    <!-- MAP -->
+    <div class="map-wrapper">
+        <div id="map"></div>
+        <div class="map-hint" id="map-hint">
+            <i class="ti ti-hand-click"></i>
+            <span>Hover to preview · Click to pin details</span>
+        </div>
+        <!-- Location badge + curious button inline -->
+        <div class="map-top-left-row">
+            <div class="map-location-badge" id="map-location-badge">
+                <i class="ti ti-map-pin"></i>
+                <span>Salzburg, Austria</span>
+            </div>
+            <div class="map-curious-btn" id="map-curious-btn" title="City insights">
+                <svg viewBox="0 0 24 24" width="16" height="16" fill="none" xmlns="http://www.w3.org/2000/svg">
+                    <circle cx="12" cy="12" r="9" fill="#eef2ff" stroke="#6366f1" stroke-width="1.5"/>
+                    <circle cx="9.5" cy="11" r="1.2" fill="#6366f1"/>
+                    <circle cx="14.5" cy="10.5" r="3" fill="none" stroke="#6366f1" stroke-width="1.3"/>
+                    <circle cx="14.5" cy="10.5" r="1.2" fill="#6366f1"/>
+                    <path d="M17 13 Q17.5 15 16 16" stroke="#6366f1" stroke-width="1" stroke-linecap="round" fill="none"/>
+                    <path d="M9 15 Q12 17 15 15" stroke="#6366f1" stroke-width="1.3" fill="none" stroke-linecap="round"/>
+                </svg>
+            </div>
+        </div>
+
+        <!-- Fact card — opens below the row -->
+        <div class="map-fact-card" id="map-fact-card">
+            <div class="map-fact-card-header">
+                <button class="map-fact-card-close" id="map-fact-close"><i class="ti ti-x"></i></button>
+            </div>
+            <div class="map-fact-card-body">
+                <i class="ti map-fact-icon" id="map-fact-icon"></i>
+                <p class="map-fact-text" id="map-fact-text"></p>
+            </div>
+            <div class="map-fact-card-footer">
+                <div class="map-fact-dots" id="map-fact-dots"></div>
+                <button class="map-fact-nav" id="map-fact-next"><i class="ti ti-chevron-right"></i></button>
+            </div>
+        </div>
+
+        <div class="map-plain-attrib">
+            © <a href="https://www.mapbox.com/about/maps/" target="_blank">Mapbox</a> ·
+            © <a href="https://www.openstreetmap.org/copyright" target="_blank">OpenStreetMap</a>
+        </div>
+
+        <!-- BOTTOM-RIGHT CONTROL STACK: legend + export -->
+        <div class="map-br-stack">
+
+            <!-- Legend card (expands upward) -->
+            <div class="map-legend" id="map-legend">
+                <div class="ml-body" id="ml-body" style="display:none">
+                    <div class="ml-row"><div class="ml-swatch" style="background:#E24B4A"></div><span>Poor (0.0–0.2)</span></div>
+                    <div class="ml-row"><div class="ml-swatch" style="background:#EF9F27"></div><span>Average (0.2–0.4)</span></div>
+                    <div class="ml-row"><div class="ml-swatch" style="background:#FAC775"></div><span>Moderate (0.4–0.6)</span></div>
+                    <div class="ml-row"><div class="ml-swatch" style="background:#97C459"></div><span>Good (0.6–0.8)</span></div>
+                    <div class="ml-row"><div class="ml-swatch" style="background:#378ADD"></div><span>Excellent (0.8–1.0)</span></div>
+                </div>
+                <div class="ml-header" id="ml-toggle">
+                    <i class="ti ti-palette ml-icon"></i>
+                    <span class="ml-title">Score Legend</span>
+                    <i class="ti ti-chevron-up ml-chevron" id="ml-chevron"></i>
+                </div>
+            </div>
+
+            <!-- Export button -->
+            <button class="map-export-btn" id="map-export-btn" title="Export map">
+                <i class="ti ti-printer"></i>
+                <span>Export Map</span>
+            </button>
+
+        </div>
+
+        <!-- EXPORT PANEL — anchored bottom-right above the stack -->
+        <div class="export-panel" id="export-panel">
+            <div class="export-panel-header">
+                <button class="export-panel-close" id="export-panel-close" aria-label="Close export panel">
+                    <i class="ti ti-x"></i>
+                </button>
+            </div>
+
+            <div class="export-panel-body">
+
+                <!-- MODE -->
+                <div class="export-section">
+                    <div class="export-section-label">Mode</div>
+                    <div class="export-mode-row">
+                        <div class="export-mode-pill export-mode-active" data-export-mode="walkability" id="export-mode-walk">
+                            <i class="ti ti-walk"></i> Walkability
+                        </div>
+                        <div class="export-mode-pill" data-export-mode="bikeability" id="export-mode-bike">
+                            <i class="ti ti-bike"></i> Bikeability
+                        </div>
+                    </div>
+                </div>
+
+                <!-- ROAD FILTER -->
+                <div class="export-section">
+                    <div class="export-section-label">Include roads</div>
+                    <div class="export-score-chips">
+                        <div class="export-schip export-schip-all export-schip-on" data-score="all">All roads</div>
+                        <div class="export-schip export-schip-poor"     data-score="poor"><span class="export-dot" style="background:#E24B4A"></span>Poor</div>
+                        <div class="export-schip export-schip-average"  data-score="average"><span class="export-dot" style="background:#EF9F27"></span>Average</div>
+                        <div class="export-schip export-schip-moderate" data-score="moderate"><span class="export-dot" style="background:#FAC775"></span>Moderate</div>
+                        <div class="export-schip export-schip-good"     data-score="good"><span class="export-dot" style="background:#97C459"></span>Good</div>
+                        <div class="export-schip export-schip-excellent" data-score="excellent"><span class="export-dot" style="background:#378ADD"></span>Excellent</div>
+                    </div>
+                </div>
+
+                <!-- FORMAT -->
+                <div class="export-section">
+                    <div class="export-section-label">Format</div>
+                    <div class="export-format-row">
+                        <button class="export-fmt-btn" id="export-btn-pdf">
+                            <i class="ti ti-file-type-pdf"></i> PDF
+                        </button>
+                        <button class="export-fmt-btn export-fmt-primary" id="export-btn-png">
+                            <i class="ti ti-photo"></i> PNG
+                        </button>
+                    </div>
+                </div>
+
+                <div class="export-hint">
+                    <i class="ti ti-info-circle"></i>
+                    Title, legend, scale bar, north arrow, data sources &amp; attribution are added automatically.
+                </div>
+
+            </div>
+        </div>
+        <div class="fs-hud" id="fs-hud">
+            <div class="fs-hud-brand">
+                <img src="images/logo-01.png" alt="NetAScore4Kids" style="height:28px;width:auto;">
+                <span class="fs-hud-title">NetAScore4Kids</span>
+            </div>
+            <div class="fs-hud-divider"></div>
+            <div class="fs-hud-mode" id="fs-hud-mode">
+                <i class="ti ti-walk"></i> Walkability
+            </div>
+            <div class="fs-hud-divider"></div>
+            <div class="fs-hud-legend">
+                <div class="fs-hud-legend-row"><div class="fs-hud-swatch" style="background:#E24B4A"></div><span>Poor</span></div>
+                <div class="fs-hud-legend-row"><div class="fs-hud-swatch" style="background:#EF9F27"></div><span>Average</span></div>
+                <div class="fs-hud-legend-row"><div class="fs-hud-swatch" style="background:#FAC775"></div><span>Moderate</span></div>
+                <div class="fs-hud-legend-row"><div class="fs-hud-swatch" style="background:#97C459"></div><span>Good</span></div>
+                <div class="fs-hud-legend-row"><div class="fs-hud-swatch" style="background:#378ADD"></div><span>Excellent</span></div>
+            </div>
+        </div>
+    </div>
+
+    <!-- RIGHT DETAIL PANEL -->
+    <div class="detail-panel" id="detail-panel">
+
+        <div class="detail-empty" id="detail-empty">
+
+            <div class="empty-illustration">
+                <i class="ti ti-trees empty-icon-green"></i>
+                <div class="empty-road-wrap">
+                    <i class="ti ti-bike empty-icon-blue empty-bob"></i>
+                    <div class="empty-road-line">
+                        <span class="empty-dot"></span>
+                        <span class="empty-dot"></span>
+                        <span class="empty-dot"></span>
+                    </div>
+                </div>
+                <i class="ti ti-map-pin empty-icon-red"></i>
+            </div>
+            <div class="empty-title">Pick a road!</div>
+            <p>Hover over any road on the map to see how safe, comfortable and fun it is for teens.</p>
+            <div class="empty-tags">
+                <span><i class="ti ti-shield-check"></i> Safety</span>
+                <span><i class="ti ti-leaf"></i> Comfort</span>
+                <span><i class="ti ti-star"></i> Joy</span>
+            </div>
+        </div>
+
+        <div class="detail-loaded" id="detail-loaded" style="display:none">
+
+            <!-- HERO HEADING + MOOD BLOB — side by side but independent -->
+            <div class="rp-hero-row">
+                <div class="rp-hero" id="rp-hero">
+                    <span class="rp-hero-text" id="rp-hero-text">–</span>
+                </div>
+                <div class="rp-mood-icon" id="rp-mood-icon"></div>
+            </div>
+
+            <!-- SCORE RING — centred -->
+            <div class="rp-ring-wrap">
+                <div class="detail-score-ring">
+                    <svg viewBox="0 0 64 64" width="90" height="90">
+                        <circle cx="32" cy="32" r="26" fill="none" stroke="rgba(0,0,0,0.07)" stroke-width="6"/>
+                        <circle id="ring-arc" cx="32" cy="32" r="26" fill="none"
+                            stroke="#d1d5db" stroke-width="6" stroke-linecap="round"
+                            stroke-dasharray="163.4" stroke-dashoffset="163.4"
+                            transform="rotate(-90 32 32)"
+                            style="transition:stroke-dashoffset 0.6s ease,stroke 0.4s ease"/>
+                    </svg>
+                    <span class="ring-value" id="ring-value">–</span>
+                </div>
+                <div class="rp-ring-meta">
+                    <div class="detail-score-label" id="detail-score-label">–</div>
+                    <div class="detail-road-type"   id="detail-road-type">–</div>
+                    <div class="detail-length"      id="detail-length"></div>
+                    <div class="pin-badge-inline" id="pin-badge" style="display:none">
+                        <i class="ti ti-pin-filled"></i> Pinned
+                    </div>
+                </div>
+            </div>
+
+            <div class="detail-divider"></div>
+
+            <!-- TAB SWITCHER — below ring -->
+            <div class="rp-tabs" id="rp-tabs">
+                <button class="rp-tab active" data-tab="metrics">
+                    <i class="ti ti-chart-bar"></i> Metrics
+                </button>
+                <button class="rp-tab" data-tab="experience">
+                    <i class="ti ti-mood-kid"></i> Experience
+                </button>
+            </div>
+
+            <!-- TAB: METRICS -->
+            <div class="rp-tab-panel" id="rp-panel-metrics">
+                <h3 class="detail-section-title sec-chart"><i class="ti ti-chart-bar"></i> Indicator scores</h3>
+                <div class="chart-wrap"><canvas id="breakdown-chart"></canvas></div>
+                <div class="detail-divider"></div>
+                <h3 class="detail-section-title sec-cards"><i class="ti ti-cards"></i> What's on this road?</h3>
+                <div class="indicator-list" id="indicator-list"></div>
+            </div>
+
+            <!-- TAB: EXPERIENCE -->
+            <div class="rp-tab-panel" id="rp-panel-experience" style="display:none">
+
+                <!-- Child voice quote -->
+                <div class="exp-quote-wrap" id="exp-quote-wrap">
+                    <div class="exp-quote-mark">"</div>
+                    <div class="exp-quote-header">
+                        <div class="exp-quote-icon"><i class="ti ti-mood-kid"></i></div>
+                        <span class="exp-quote-byline">A child's voice</span>
+                        <div class="exp-mood-pill" id="exp-mood-pill"></div>
+                    </div>
+                    <p class="exp-quote" id="exp-quote">–</p>
+                    <p class="exp-context" id="exp-context"></p>
+                </div>
+
+                <!-- Group summary cards -->
+                <h3 class="detail-section-title sec-exp-scores"><i class="ti ti-chart-bar"></i> How it scores</h3>
+                <div class="exp-groups" id="exp-groups"></div>
+
+                <!-- Teen-Friendly Checklist -->
+                <h3 class="detail-section-title sec-exp-check"><i class="ti ti-checklist"></i> Teen-Friendly Checklist</h3>
+                <div class="exp-checklist" id="exp-checklist"></div>
+
+                <!-- Improvement ideas -->
+                <div class="exp-improve-wrap" id="exp-improve-wrap"></div>
+
+            </div>
+
+        </div>
+    </div>
+
+    <!-- CREDITS FOOTER -->
+    <div class="credits-footer" id="credits-footer">
+
+        <!-- LEFT: brand + social links -->
+        <div class="footer-brand">
+            <span class="footer-brand-name">NetAScore4Teens · Developed by Amna Azeem &copy; 2026</span>
+            <div class="footer-socials">
+                <a href="https://www.linkedin.com/in/amna-azeem/" target="_blank" class="footer-social-link" title="LinkedIn"><i class="ti ti-brand-linkedin"></i></a>
+                <a href="https://github.com/urbanistamna"          target="_blank" class="footer-social-link" title="GitHub"><i class="ti ti-brand-github"></i></a>
+                <a href="https://www.instagram.com/urbanistamna"   target="_blank" class="footer-social-link" title="Instagram"><i class="ti ti-brand-instagram"></i></a>
+                <a href="https://x.com/urbanistamna"               target="_blank" class="footer-social-link" title="Twitter / X"><i class="ti ti-brand-x"></i></a>
+            </div>
+        </div>
+
+        <!-- CENTRE: colorful popping stat pill -->
+        <div class="footer-stat-wrap">
+            <div class="footer-stat-pill" id="footer-stat-pill">
+                <span class="footer-stat-icon" id="footer-stat-icon"></span>
+                <span class="footer-stat-text" id="footer-stat-text"></span>
+            </div>
+        </div>
+
+        <!-- RIGHT: logos with links -->
+        <div class="footer-logos">
+            <a href="https://master-cde.eu/"                              target="_blank" class="footer-logo-link"><img src="images/copernicus-removebg-preview.png" alt="Copernicus CDE"></a>
+            <a href="https://european-union.europa.eu/"                   target="_blank" class="footer-logo-link"><img src="images/EN Co-funded by the EU_POS.jpg"  alt="EU"></a>
+            <a href="https://mobilitylab.zgis.at/en/home-2/"             target="_blank" class="footer-logo-link"><img src="images/Mobility Lab.png"                alt="Mobility Lab"></a>
+            <a href="https://www.plus.ac.at/"                             target="_blank" class="footer-logo-link"><img src="images/PLUS Logo englisch Farbe.jpg"    alt="PLUS" class="logo-big"></a>
+            <a href="https://www.upol.cz"                                 target="_blank" class="footer-logo-link"><img src="images/UP_logo_horizont_en (1).png"     alt="Palacký" class="logo-big"></a>
+            <a href="https://www.linkedin.com/company/i-mobyl"            target="_blank" class="footer-logo-link"><img src="images/Main logo.png"                   alt="i-MOBYL" class="logo-imobyl"></a>
+        </div>
+
+    </div>
+
+</div><!-- end #map-container -->
+<script src="./script.js?v=17"></script>
+</body>
+</html>
