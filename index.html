@@ -4,8 +4,14 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>NetAScore4Teens</title>
-    <link href="https://api.mapbox.com/mapbox-gl-js/v3.21.0/mapbox-gl.css" rel="stylesheet">
-    <script src="https://api.mapbox.com/mapbox-gl-js/v3.21.0/mapbox-gl.js"></script>
+    <link href="https://unpkg.com/maplibre-gl@4.7.1/dist/maplibre-gl.css" rel="stylesheet">
+    <script src="https://unpkg.com/maplibre-gl@4.7.1/dist/maplibre-gl.js"></script>
+    <script src="https://unpkg.com/pmtiles@3.0.6/dist/pmtiles.js"></script>
+    <script>
+        // Register the pmtiles:// protocol so MapLibre can read the self-hosted tileset
+        const pmtilesProtocol = new pmtiles.Protocol();
+        maplibregl.addProtocol('pmtiles', pmtilesProtocol.tile);
+    </script>
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@latest/dist/tabler-icons.min.css">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -803,7 +809,7 @@
         </div>
 
         <div class="map-plain-attrib">
-            © <a href="https://www.mapbox.com/about/maps/" target="_blank">Mapbox</a> ·
+            © <a href="https://openfreemap.org/" target="_blank">OpenFreeMap</a> ·
             © <a href="https://www.openstreetmap.org/copyright" target="_blank">OpenStreetMap</a>
         </div>
 
@@ -1056,6 +1062,6 @@
     </div>
 
 </div><!-- end #map-container -->
-<script src="./script.js?v=21"></script>
+<script src="./script.js?v=20"></script>
 </body>
 </html>

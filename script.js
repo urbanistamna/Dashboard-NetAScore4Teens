@@ -170,7 +170,7 @@ document.addEventListener('DOMContentLoaded', () => {
         document.body.classList.toggle('dark-mode', on);
         if (icon)  icon.className    = on ? 'ti ti-sun'  : 'ti ti-moon';
         if (label) label.textContent = on ? 'Light' : 'Dark';
-        const style = on ? 'mapbox://styles/mapbox/dark-v11' : 'mapbox://styles/mapbox/light-v11';
+        const style = on ? 'https://tiles.openfreemap.org/styles/dark' : 'https://tiles.openfreemap.org/styles/positron';
         if (map) {
             // setStyle works any time; layers are re-added via style.load handler
             // diff:false forces a full style replace — diffing between two unrelated
@@ -189,9 +189,8 @@ document.addEventListener('DOMContentLoaded', () => {
 });
 
 document.addEventListener('DOMContentLoaded', () => {
-    if (typeof mapboxgl === 'undefined') { console.error('Mapbox GL JS not loaded'); return; }
+    if (typeof maplibregl === 'undefined') { console.error('MapLibre GL JS not loaded'); return; }
 
-    mapboxgl.accessToken = 'pk.eyJ1IjoiYW1uYXdheXBvaW50IiwiYSI6ImNtcjdqcHU2cjEwYnkyeHNhYTEzMmEzODMifQ.UBWbgqmS4u-EZT4OIpyM1Q';
     const TILESET_URL  = 'https://urbanistamna.github.io/Dashboard-NetAScore4Teens/netascore.pmtiles';
     const SOURCE_LAYER = 'netascore_salzburg_edges';
 
@@ -1058,21 +1057,21 @@ document.addEventListener('DOMContentLoaded', () => {
     // =========================================================
     // MAP
     // =========================================================
-    map = new mapboxgl.Map({
+    map = new maplibregl.Map({
         container: 'map',
-        style: 'mapbox://styles/mapbox/light-v11',
+        style: 'https://tiles.openfreemap.org/styles/positron',
         center: [13.055, 47.809],
         zoom: 12,
         attributionControl: false,
         preserveDrawingBuffer: true   // required for canvas export to work
     });
-    map.addControl(new mapboxgl.NavigationControl({ showCompass: false }), 'top-right');
-    map.addControl(new mapboxgl.FullscreenControl({ container: document.querySelector('.map-wrapper') }), 'top-right');
-    map.addControl(new mapboxgl.ScaleControl({ maxWidth: 120, unit: 'metric' }), 'bottom-left');
+    map.addControl(new maplibregl.NavigationControl({ showCompass: false }), 'top-right');
+    map.addControl(new maplibregl.FullscreenControl({ container: document.querySelector('.map-wrapper') }), 'top-right');
+    map.addControl(new maplibregl.ScaleControl({ maxWidth: 120, unit: 'metric' }), 'bottom-left');
 
     function addMapLayers() {
         if (!map.getSource('netascore')) {
-            map.addSource('netascore', { type:'vector', url:TILESET_URL });
+            map.addSource('netascore', { type:'vector', url:'pmtiles://' + TILESET_URL });
         }
 
         const sharedPaint = prop => ({
@@ -1272,7 +1271,7 @@ document.addEventListener('DOMContentLoaded', () => {
         };
 
         const poiCache   = {}; // cache fetched GeoJSON per type
-        const poiPopup   = new mapboxgl.Popup({ closeButton:true, closeOnClick:false, maxWidth:'220px' });
+        const poiPopup   = new maplibregl.Popup({ closeButton:true, closeOnClick:false, maxWidth:'220px' });
 
         async function fetchPOI(type) {
             if (poiCache[type]) return poiCache[type];
@@ -1641,7 +1640,7 @@ document.addEventListener('DOMContentLoaded', () => {
         ctx.fillStyle = '#6b7280';
         ctx.font      = '10px Nunito, sans-serif';
         ctx.fillText('© 2026 Amna Azeem · Paris Lodron University of Salzburg · Palacký University of Olomouc · Copernicus Master in Digital Earth · EU Co-funded', 16, HEADER + H + 18);
-        ctx.fillText('Map data © Mapbox · © OpenStreetMap contributors · NetAScore model · EPSG:4326 · June 2026', 16, HEADER + H + 34);
+        ctx.fillText('Map data © OpenFreeMap · © OpenStreetMap contributors · NetAScore model · EPSG:4326 · June 2026', 16, HEADER + H + 34);
 
         // Right side of footer — filter note
         const filterNote = tiers.length === 5

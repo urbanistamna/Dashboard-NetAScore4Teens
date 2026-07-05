@@ -456,9 +456,9 @@ body.dark-mode .detail-section-title.sec-exp-improve { background:rgba(99,102,24
 .extra-val { font-weight:700; color:var(--text); }
 .badge-pill { font-size:10px; font-weight:700; padding:2px 8px; border-radius:99px; }
 
-/* Mapbox */
-.mapboxgl-ctrl-group { border:none !important; border-radius:14px !important; overflow:hidden; box-shadow:0 8px 24px rgba(15,23,42,0.10) !important; }
-.mapboxgl-ctrl button { width:38px !important; height:38px !important; }
+/* MapLibre */
+.maplibregl-ctrl-group { border:none !important; border-radius:14px !important; overflow:hidden; box-shadow:0 8px 24px rgba(15,23,42,0.10) !important; }
+.maplibregl-ctrl button { width:38px !important; height:38px !important; }
 
 /* Responsive */
 @media (max-width:1200px) { .detail-panel { display:none; } .map-wrapper { right:20px; } }
@@ -779,24 +779,24 @@ body.dark-mode .ind-flip-back-text { color: #cbd5e1; }
     font-weight: 500;
 }
 
-/* ── SMALLER MAPBOX CONTROLS ── */
-.mapboxgl-ctrl-group {
+/* ── SMALLER MAPLIBRE CONTROLS ── */
+.maplibregl-ctrl-group {
     border: none !important;
     border-radius: 10px !important;
     overflow: hidden;
     box-shadow: 0 4px 14px rgba(15,23,42,0.10) !important;
 }
-.mapboxgl-ctrl button {
+.maplibregl-ctrl button {
     width: 30px !important;
     height: 30px !important;
 }
-.mapboxgl-ctrl button .mapboxgl-ctrl-icon {
+.maplibregl-ctrl button .maplibregl-ctrl-icon {
     background-size: 14px 14px !important;
 }
 
 /* ── ATTRIBUTION — plain text only, no i button ── */
-.mapboxgl-ctrl-attrib,
-.mapboxgl-ctrl-attrib-button { display: none !important; }
+.maplibregl-ctrl-attrib,
+.maplibregl-ctrl-attrib-button { display: none !important; }
 
 .map-plain-attrib {
     position: absolute;
@@ -1192,23 +1192,23 @@ body.dark-mode .lp-intro-heading { background: rgba(146,64,14,0.18); color: #fbb
 }
 .radar-wrap canvas { max-width: 100%; }
 
-/* ── MAPBOX CONTROLS — bigger buttons ── */
-.mapboxgl-ctrl-group {
+/* ── MAPLIBRE CONTROLS — bigger buttons ── */
+.maplibregl-ctrl-group {
     border: none !important;
     border-radius: 12px !important;
     overflow: hidden;
     box-shadow: 0 4px 14px rgba(15,23,42,0.12) !important;
 }
-.mapboxgl-ctrl button {
+.maplibregl-ctrl button {
     width: 36px !important;
     height: 36px !important;
 }
-.mapboxgl-ctrl button .mapboxgl-ctrl-icon {
+.maplibregl-ctrl button .maplibregl-ctrl-icon {
     background-size: 18px 18px !important;
 }
 
 /* ── SCALE BAR ── */
-.mapboxgl-ctrl-scale {
+.maplibregl-ctrl-scale {
     background: rgba(255,252,248,0.92) !important;
     border: 1px solid rgba(120,110,95,0.2) !important;
     border-radius: 6px !important;
@@ -1220,7 +1220,7 @@ body.dark-mode .lp-intro-heading { background: rgba(146,64,14,0.18); color: #fbb
     backdrop-filter: blur(8px) !important;
 }
 
-/* ── MAPBOX CONTROLS — dark mode ── */
+/* ── MAPLIBRE CONTROLS — dark mode ── */
 
 body.dark-mode .map-fact-text { color: #e5e7eb; }
 body.dark-mode .map-fact-card-title { color: #6b7280; }
@@ -1366,20 +1366,20 @@ body.dark-mode .map-curious-btn {
     border-color: rgba(255,255,255,0.12);
 }
 
-body.dark-mode .mapboxgl-ctrl-group {
+body.dark-mode .maplibregl-ctrl-group {
     background: rgba(28,32,40,0.96) !important;
     box-shadow: 0 4px 14px rgba(0,0,0,0.35) !important;
 }
-body.dark-mode .mapboxgl-ctrl button {
+body.dark-mode .maplibregl-ctrl button {
     background-color: rgba(28,32,40,0.96) !important;
 }
-body.dark-mode .mapboxgl-ctrl button:hover {
+body.dark-mode .maplibregl-ctrl button:hover {
     background-color: rgba(50,55,65,0.98) !important;
 }
-body.dark-mode .mapboxgl-ctrl-icon {
+body.dark-mode .maplibregl-ctrl-icon {
     filter: invert(1) !important;
 }
-body.dark-mode .mapboxgl-ctrl-scale {
+body.dark-mode .maplibregl-ctrl-scale {
     background: rgba(28,32,40,0.92) !important;
     border-color: rgba(255,255,255,0.15) !important;
     color: #9ca3af !important;
@@ -1997,8 +1997,8 @@ body.dark-mode .map-location-badge {
 body.dark-mode .map-fact-text { color: #e5e7eb; }
 body.dark-mode .map-fact-card-title { color: #6b7280; }
 
-body.dark-mode .mapboxgl-ctrl-group { background: rgba(28,32,40,0.95) !important; }
-body.dark-mode .mapboxgl-ctrl button { background-color: rgba(28,32,40,0.9) !important; }
+body.dark-mode .maplibregl-ctrl-group { background: rgba(28,32,40,0.95) !important; }
+body.dark-mode .maplibregl-ctrl button { background-color: rgba(28,32,40,0.9) !important; }
 body.dark-mode .clear-filter-btn { color: #9ca3af; background: rgba(255,255,255,0.08); border-color: rgba(255,255,255,0.12); }
 body.dark-mode .empty-dot { opacity: 0.7; }
 body.dark-mode .map-hint { background: rgba(0,0,0,0.65); }
