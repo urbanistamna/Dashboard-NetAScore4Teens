@@ -173,7 +173,9 @@ document.addEventListener('DOMContentLoaded', () => {
         const style = on ? 'mapbox://styles/mapbox/dark-v11' : 'mapbox://styles/mapbox/light-v11';
         if (map) {
             // setStyle works any time; layers are re-added via style.load handler
-            map.setStyle(style);
+            // diff:false forces a full style replace — diffing between two unrelated
+            // style JSONs (positron vs dark) can otherwise leave custom layers broken
+            map.setStyle(style, { diff: false });
         }
         localStorage.setItem('n4k-dark', on ? '1' : '0');
         // Re-render chart with dark-aware colours
@@ -189,7 +191,7 @@ document.addEventListener('DOMContentLoaded', () => {
 document.addEventListener('DOMContentLoaded', () => {
     if (typeof mapboxgl === 'undefined') { console.error('Mapbox GL JS not loaded'); return; }
 
-    mapboxgl.accessToken = 'pk.eyJ1IjoidXJiYW5pc3RhbW5hIiwiYSI6ImNtcjRwZXprYTBlbzAyeHNhb3hyNWlvbzYifQ.sTeymBT77IZIFaEpgaVEVA';
+    mapboxgl.accessToken = 'pk.eyJ1IjoiYW1uYXdheXBvaW50IiwiYSI6ImNtcjdqcHU2cjEwYnkyeHNhYTEzMmEzODMifQ.UBWbgqmS4u-EZT4OIpyM1Q';
     const TILESET_URL  = 'https://urbanistamna.github.io/Dashboard-NetAScore4Teens/netascore.pmtiles';
     const SOURCE_LAYER = 'netascore_salzburg_edges';
 
