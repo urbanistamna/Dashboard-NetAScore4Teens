@@ -1325,7 +1325,7 @@ document.addEventListener('DOMContentLoaded', () => {
             // 1) Prefer a pre-fetched static file (fast, no rate limits, no timeouts).
             //    Generate these once with fetch-poi-data.mjs and upload to /data/.
             try {
-                const resp = await fetch(`/data/${type}.geojson`);
+                const resp = await fetch(`data/${type}.geojson`);
                 if (resp.ok) {
                     const geojson = await resp.json();
                     poiCache[type] = geojson;
