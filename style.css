@@ -54,10 +54,12 @@ body { margin:0; font-family:"Nunito",sans-serif; background:linear-gradient(135
 }
 .panel-section.sec-explore h3 { background:#E6F1FB; color:#185FA5; }
 .panel-section.sec-filter  h3 { background:#EAF3DE; color:#3B6D11; }
-.panel-section.sec-poi     h3 { background:#DCFCE7; color:#166534; }
+.panel-section.sec-poi     h3 { background:#F3E8FF; color:#7E22CE; }
+.panel-section.sec-env     h3 { background:#F0FDF4; color:#15803d; }
 body.dark-mode .panel-section.sec-explore h3 { background:rgba(24,95,165,0.18); color:#93c5fd; }
 body.dark-mode .panel-section.sec-filter  h3 { background:rgba(59,109,17,0.18);  color:#86c83c; }
-body.dark-mode .panel-section.sec-poi     h3 { background:rgba(22,101,52,0.18);  color:#6ee7b7; }
+body.dark-mode .panel-section.sec-poi     h3 { background:rgba(126,34,206,0.18); color:#c084fc; }
+body.dark-mode .panel-section.sec-env     h3 { background:rgba(21,128,61,0.18);  color:#4ade80; }
 
 /* MODE TOGGLE */
 .mode-btns { display:grid; grid-template-columns:1fr 1fr; gap:6px; }
@@ -1643,26 +1645,26 @@ body.dark-mode .dark-toggle:hover {
     background: rgba(255,255,255,0.5);
 }
 body.dark-mode .poi-chip { background: rgba(255,255,255,0.06); }
-.poi-chip:hover { transform: translateY(-1px); }
+.poi-chip:hover { opacity: 0.85; }
 
 .poi-chip i { font-size: 18px; display: block; margin-bottom: 2px; }
 .poi-chip span { font-size: 9px; font-weight: 700; display: block; }
 
 /* Per-POI colours — inactive */
 .poi-schools   i { color:#DC2626; } .poi-schools   span { color:#7f1d1d; }
-.poi-playgrounds i { color:#CA8A04; } .poi-playgrounds span { color:#713f12; }
+.poi-sports    i { color:#92400E; } .poi-sports    span { color:#78350f; }
 .poi-parks     i { color:#16A34A; } .poi-parks     span { color:#14532d; }
 .poi-busstops  i { color:#2563EB; } .poi-busstops  span { color:#1e3a8a; }
 
 /* Inactive bg tints */
 .poi-schools   { background:#FCEBEB; }
-.poi-playgrounds { background:#FAEEDA; }
+.poi-sports    { background:#FEF3C7; }
 .poi-parks     { background:#EAF3DE; }
 .poi-busstops  { background:#E6F1FB; }
 
 /* Active state — coloured border */
 .poi-schools.active   { border-color:#DC2626; }
-.poi-playgrounds.active { border-color:#CA8A04; }
+.poi-sports.active    { border-color:#F59E0B; }
 .poi-parks.active     { border-color:#16A34A; }
 .poi-busstops.active  { border-color:#2563EB; }
 
@@ -2266,3 +2268,112 @@ body.dark-mode .export-fmt-btn      { background: #374151; color: #e5e7eb; borde
 body.dark-mode .export-fmt-btn:hover { background: #4b5563; }
 body.dark-mode .export-fmt-primary  { background: #378ADD; color: #fff; border-color: #378ADD; }
 body.dark-mode .export-hint         { color: #6b7280; }
+
+/* ── POI LOADING INDICATOR ── */
+.poi-loading {
+    display: flex;
+    align-items: center;
+    gap: 5px;
+    margin-top: 6px;
+    font-family: Nunito, sans-serif;
+    font-size: 11px;
+    font-weight: 600;
+    color: #6b7280;
+}
+.poi-loading i { font-size: 12px; color: #378ADD; }
+.poi-loading-dots span {
+    opacity: 0;
+    animation: poi-dot 1.2s infinite;
+    font-weight: 800;
+}
+.poi-loading-dots span:nth-child(1) { animation-delay: 0s; }
+.poi-loading-dots span:nth-child(2) { animation-delay: 0.2s; }
+.poi-loading-dots span:nth-child(3) { animation-delay: 0.4s; }
+@keyframes poi-dot {
+    0%, 60%, 100% { opacity: 0; }
+    30% { opacity: 1; }
+}
+
+body.dark-mode .poi-loading {
+    color: #9ca3af;
+}
+
+/* ── ENVIRONMENTAL LAYERS ── */
+.sec-env { margin-top: 4px; }
+
+.env-chips {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+    margin-bottom: 8px;
+}
+
+.env-chip {
+    display: flex;
+    align-items: center;
+    gap: 5px;
+    padding: 5px 11px;
+    border-radius: 99px;
+    border: 1.5px solid var(--border, rgba(120,110,95,0.15));
+    font-family: Nunito, sans-serif;
+    font-size: 11px;
+    font-weight: 600;
+    color: var(--text-muted, #6b7280);
+    cursor: pointer;
+    transition: all 0.15s;
+    background: none;
+}
+.env-chip:hover { border-color: #86efac; color: #16a34a; background: #f0fdf4; }
+.env-chip.active { background: #dcfce7; border-color: #4ade80; color: #15803d; }
+.env-chip i { font-size: 13px; }
+
+.env-opacity-row {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 4px 0;
+    margin-top: 2px;
+}
+.env-opacity-label {
+    font-size: 10px;
+    font-weight: 600;
+    color: var(--text-muted, #6b7280);
+    white-space: nowrap;
+    display: flex;
+    align-items: center;
+    gap: 4px;
+}
+.env-opacity-label i { font-size: 12px; }
+.env-opacity-slider {
+    flex: 1;
+    height: 4px;
+    accent-color: #4ade80;
+    cursor: pointer;
+}
+.env-opacity-value {
+    font-size: 10px;
+    font-weight: 600;
+    color: var(--text-muted, #6b7280);
+    min-width: 28px;
+    text-align: right;
+}
+
+body.dark-mode .env-chip { border-color: rgba(255,255,255,0.1); color: #9ca3af; }
+body.dark-mode .env-chip:hover { border-color: #4ade80; color: #4ade80; background: rgba(34,197,94,0.1); }
+body.dark-mode .env-chip.active { background: rgba(34,197,94,0.15); border-color: #4ade80; color: #4ade80; }
+
+/* ── POI SPINNER in heading ── */
+.poi-spinner {
+    display: inline-block;
+    width: 11px;
+    height: 11px;
+    border: 2px solid rgba(126,34,206,0.25);
+    border-top-color: #7E22CE;
+    border-radius: 50%;
+    animation: poi-spin 0.7s linear infinite;
+    margin-left: 4px;
+    vertical-align: middle;
+    flex-shrink: 0;
+}
+@keyframes poi-spin { to { transform: rotate(360deg); } }
+body.dark-mode .poi-spinner { border-color: rgba(192,132,252,0.2); border-top-color: #c084fc; }

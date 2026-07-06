@@ -244,7 +244,7 @@ document.addEventListener('DOMContentLoaded', () => {
           def:'Points of interest and landmarks along the route. Interesting streets feel shorter and more enjoyable.' },
         { group:'joy',     key:'comfort_facilities',           label:'Rest facilities',     icon:'ti-armchair',         color:'ind-blue',   weight:0.1,
           def:'Comfort facilities like benches, shades, rest spots and shelters. Rest spots give children and caregivers places to pause on longer routes.' },
-        { group:'joy',     key:'eating_facilities',            label:'Eating spots',        icon:'ti-fork',             color:'ind-amber',  weight:0.1,
+        { group:'joy',     key:'eating_facilities',            label:'Eating spots',        icon:'ti-tools-kitchen',    color:'ind-amber',  weight:0.1,
           def:'Cafes, kiosks, supermarkets and food shops nearby. In workshops with Teens, a supermarket (SPAR) was the most cited positive landmark on the school street.' },
         { group:'joy',     key:'attractiveness',               label:'Attractiveness',      icon:'ti-sparkles',         color:'ind-purple', weight:0,
           def:'Overall visual and sensory attractiveness of the street environment. Attractive streets motivate children to walk and make journeys feel shorter and more enjoyable.' },
@@ -293,7 +293,7 @@ document.addEventListener('DOMContentLoaded', () => {
           def:'Overall visual attractiveness of the street. Beautiful, varied environments make cycling feel like an exploration rather than a chore.' },
         { group:'joy',     key:'comfort_facilities',           label:'Rest facilities',     icon:'ti-armchair',         color:'ind-blue',   weight:0,
           def:'Benches, shelters and rest spots. Useful for longer cycling trips so children can take breaks and stay hydrated.' },
-        { group:'joy',     key:'eating_facilities',            label:'Eating spots',        icon:'ti-fork',             color:'ind-amber',  weight:0,
+        { group:'joy',     key:'eating_facilities',            label:'Eating spots',        icon:'ti-tools-kitchen',    color:'ind-amber',  weight:0,
           def:'Food shops and kiosks nearby. A bakery or kiosk on the route is a motivating landmark — children cited these as highlights in SALIS workshops.' },
     ];
 
@@ -387,15 +387,15 @@ document.addEventListener('DOMContentLoaded', () => {
 
     function scoreColor(v) {
         if (v === null || v === undefined || isNaN(v)) return '#9ca3af';
-        if (v <= 0.2) return '#E24B4A'; if (v <= 0.4) return '#EF9F27';
-        if (v <= 0.6) return '#FAC775'; if (v <= 0.8) return '#97C459';
+        if (v <= 0.20) return '#E24B4A'; if (v <= 0.40) return '#EF9F27';
+        if (v <= 0.60) return '#FAC775'; if (v <= 0.80) return '#97C459';
         return '#378ADD';
     }
 
     function scoreLabel(v) {
         if (!v || isNaN(v)) return 'No data';
-        if (v <= 0.2) return 'Poor'; if (v <= 0.4) return 'Average';
-        if (v <= 0.6) return 'Moderate'; if (v <= 0.8) return 'Good';
+        if (v <= 0.20) return 'Poor'; if (v <= 0.40) return 'Average';
+        if (v <= 0.60) return 'Moderate'; if (v <= 0.80) return 'Good';
         return 'Excellent';
     }
 
@@ -414,11 +414,11 @@ document.addEventListener('DOMContentLoaded', () => {
     // THRESHOLD — gradient slider + 5 emoji chips
     // =========================================================
     const CHIP_RANGES = [
-        { min:0.0, max:0.2 },  // Poor
-        { min:0.2, max:0.4 },  // Average
-        { min:0.4, max:0.6 },  // Moderate
-        { min:0.6, max:0.8 },  // Good
-        { min:0.8, max:1.0 },  // Excellent
+        { min:0.0,  max:0.2 },  // Poor      0.00 – 0.20
+        { min:0.21, max:0.4 },  // Average   0.21 – 0.40
+        { min:0.41, max:0.6 },  // Moderate  0.41 – 0.60
+        { min:0.61, max:0.8 },  // Good      0.61 – 0.80
+        { min:0.81, max:1.0 },  // Excellent 0.81 – 1.00
     ];
     let thresholdMax = 1.0;
 
@@ -819,7 +819,7 @@ document.addEventListener('DOMContentLoaded', () => {
             { key: 'greenness',       label: 'Greenery',          icon: 'ti-trees',         passTest: v => v >= 0.7 },
             { key: 'noise',           label: 'Quiet environment', icon: 'ti-ear',           passTest: v => v >= 0.6 },
             { key: 'play_and_outdoor',label: 'Play areas',        icon: 'ti-mood-kid',      passTest: v => v > 0 },
-            { key: 'eating_facilities',   label: 'Eating spots',          icon: 'ti-fork',      passTest: v => v > 0 },
+            { key: 'eating_facilities',   label: 'Eating spots',          icon: 'ti-tools-kitchen', passTest: v => v > 0 },
             { key: 'comfort_facilities',  label: 'Comfort facilities',    icon: 'ti-armchair',  passTest: v => v > 0 },
         ];
         const expChecklist = document.getElementById('exp-checklist');
@@ -1079,11 +1079,11 @@ document.addEventListener('DOMContentLoaded', () => {
             'line-opacity': 0.85, 'line-blur': 0.1,
             'line-color': ['case',
                 ['==',['get',prop],null],'#d1d5db',
-                ['<=',['get',prop],0.2],'#E24B4A',
-                ['<=',['get',prop],0.4],'#EF9F27',
-                ['<=',['get',prop],0.6],'#FAC775',
-                ['<=',['get',prop],0.8],'#97C459',
-                ['<=',['get',prop],1.0],'#378ADD',
+                ['<=',['get',prop],0.20],'#E24B4A',
+                ['<=',['get',prop],0.40],'#EF9F27',
+                ['<=',['get',prop],0.60],'#FAC775',
+                ['<=',['get',prop],0.80],'#97C459',
+                ['<=',['get',prop],1.0], '#378ADD',
                 '#9ca3af']
         });
 
@@ -1110,10 +1110,10 @@ document.addEventListener('DOMContentLoaded', () => {
                     'line-width':    ['interpolate',['linear'],['zoom'],10,2,12,3.5,14,5.5,16,8],
                     'line-color': ['case',
                         ['==',['get', currentMode === 'walkability' ? 'index_walk_ft' : 'index_bike_ft'],null],'#9ca3af',
-                        ['<=',['get',currentMode === 'walkability' ? 'index_walk_ft' : 'index_bike_ft'],0.2],'#E24B4A',
-                        ['<=',['get',currentMode === 'walkability' ? 'index_walk_ft' : 'index_bike_ft'],0.4],'#EF9F27',
-                        ['<=',['get',currentMode === 'walkability' ? 'index_walk_ft' : 'index_bike_ft'],0.6],'#FAC775',
-                        ['<=',['get',currentMode === 'walkability' ? 'index_walk_ft' : 'index_bike_ft'],0.8],'#97C459',
+                        ['<=',['get',currentMode === 'walkability' ? 'index_walk_ft' : 'index_bike_ft'],0.20],'#E24B4A',
+                        ['<=',['get',currentMode === 'walkability' ? 'index_walk_ft' : 'index_bike_ft'],0.40],'#EF9F27',
+                        ['<=',['get',currentMode === 'walkability' ? 'index_walk_ft' : 'index_bike_ft'],0.60],'#FAC775',
+                        ['<=',['get',currentMode === 'walkability' ? 'index_walk_ft' : 'index_bike_ft'],0.80],'#97C459',
                         '#378ADD'],
                     'line-opacity':  1,
                 },
@@ -1220,6 +1220,9 @@ document.addEventListener('DOMContentLoaded', () => {
 
         // CLICK — pin/unpin to keep panel on mouseleave
         map.on('click', e => {
+            // Ignore clicks on POI markers or MapLibre popup elements
+            const t = e.originalEvent.target;
+            if (t.closest('.poi-map-marker') || t.closest('.maplibregl-popup') || t.closest('.mapboxgl-popup')) return;
             const feats = map.queryRenderedFeatures(e.point, { layers:['walkability-layer','bikeability-layer'] });
             if (!feats.length) { setPinned(null); setHighlight(null); showEmpty(); return; }
             const props = feats[0].properties; const osmId = String(props.osm_id);
@@ -1249,38 +1252,66 @@ document.addEventListener('DOMContentLoaded', () => {
 
         const POI_CONFIG = {
             schools: {
-                query: `[out:json][timeout:25];(node["amenity"="school"](${SALZBURG_BBOX});way["amenity"="school"](${SALZBURG_BBOX}););out center;`,
-                color: '#DC2626', bg: '#FEE2E2', icon: 'S',
+                // Only primary and secondary schools — not yoga, music, driving etc.
+                query: `[out:json][timeout:25];(node["amenity"="school"]["school:level"!="preschool"]["isced:level"!="0"](${SALZBURG_BBOX});way["amenity"="school"]["school:level"!="preschool"]["isced:level"!="0"](${SALZBURG_BBOX});node["amenity"="school"]["name"~"Gymnasium|Mittelschule|Hauptschule|Volksschule|Realschule|Schule|NMS|AHS|BHS|BMS|HTL|HAK|HLW",i](${SALZBURG_BBOX});way["amenity"="school"]["name"~"Gymnasium|Mittelschule|Hauptschule|Volksschule|Realschule|Schule|NMS|AHS|BHS|BMS|HTL|HAK|HLW",i](${SALZBURG_BBOX}););out center;`,
+                color: '#DC2626', bg: '#FEE2E2',
                 label: 'School'
             },
-            playgrounds: {
-                query: `[out:json][timeout:25];(node["leisure"="playground"](${SALZBURG_BBOX});way["leisure"="playground"](${SALZBURG_BBOX}););out center;`,
-                color: '#CA8A04', bg: '#FEF9C3', icon: 'P',
-                label: 'Playground'
+            sports: {
+                // Sports facilities relevant for 12-15 year olds
+                query: `[out:json][timeout:25];(node["leisure"="pitch"](${SALZBURG_BBOX});way["leisure"="pitch"](${SALZBURG_BBOX});node["leisure"="sports_centre"](${SALZBURG_BBOX});way["leisure"="sports_centre"](${SALZBURG_BBOX});node["leisure"="stadium"](${SALZBURG_BBOX});way["leisure"="stadium"](${SALZBURG_BBOX}););out center;`,
+                color: '#EA580C', bg: '#FFF7ED',
+                label: 'Sports facility'
             },
             parks: {
-                query: `[out:json][timeout:25];(node["leisure"="park"](${SALZBURG_BBOX});way["leisure"="park"](${SALZBURG_BBOX}););out center;`,
-                color: '#16A34A', bg: '#DCFCE7', icon: 'Pk',
+                query: `[out:json][timeout:25];(way["leisure"="park"](${SALZBURG_BBOX});node["leisure"="park"](${SALZBURG_BBOX}););out center;`,
+                color: '#16A34A', bg: '#DCFCE7',
                 label: 'Park'
             },
             busstops: {
                 query: `[out:json][timeout:25];node["highway"="bus_stop"](${SALZBURG_BBOX});out;`,
-                color: '#2563EB', bg: '#DBEAFE', icon: 'B',
+                color: '#2563EB', bg: '#DBEAFE',
                 label: 'Bus stop'
             }
         };
 
         const poiCache   = {}; // cache fetched GeoJSON per type
-        const poiPopup   = new maplibregl.Popup({ closeButton:true, closeOnClick:false, maxWidth:'220px' });
+        const poiMarkers = {}; // store Mapbox markers per type for removal
+        const poiPopup = new maplibregl.Popup({ 
+            closeButton: true, 
+            closeOnClick: false, 
+            maxWidth: '220px',
+            anchor: 'bottom',
+            offset: 12,
+            focusAfterOpen: false
+        });
+
+        // Prevent map from panning when popup opens
+        poiPopup.on('open', () => {
+            map.dragPan.enable();
+        });
 
         async function fetchPOI(type) {
             if (poiCache[type]) return poiCache[type];
             const cfg  = POI_CONFIG[type];
-            const url  = 'https://overpass-api.de/api/interpreter?data=' + encodeURIComponent(cfg.query);
-            const resp = await fetch(url);
-            const data = await resp.json();
+            // Try primary, fall back to mirror
+            const endpoints = [
+                'https://overpass.kumi.systems/api/interpreter',
+                'https://overpass-api.de/api/interpreter',
+            ];
+            let data;
+            for (const endpoint of endpoints) {
+                try {
+                    const controller = new AbortController();
+                    const timeout = setTimeout(() => controller.abort(), 10000); // 10s timeout
+                    const resp = await fetch(endpoint + '?data=' + encodeURIComponent(cfg.query), { signal: controller.signal });
+                    clearTimeout(timeout);
+                    data = await resp.json();
+                    break;
+                } catch(e) { continue; }
+            }
+            if (!data) throw new Error('All Overpass endpoints failed');
 
-            // Convert OSM elements to GeoJSON points
             const features = data.elements.map(el => {
                 const lat = el.lat ?? el.center?.lat;
                 const lon = el.lon ?? el.center?.lon;
@@ -1288,12 +1319,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 return {
                     type: 'Feature',
                     geometry: { type:'Point', coordinates:[lon, lat] },
-                    properties: {
-                        name:  el.tags?.name || cfg.label,
-                        type:  cfg.label,
-                        color: cfg.color,
-                        bg:    cfg.bg
-                    }
+                    properties: { name: el.tags?.name || cfg.label, type: cfg.label }
                 };
             }).filter(Boolean);
 
@@ -1302,56 +1328,105 @@ document.addEventListener('DOMContentLoaded', () => {
             return geojson;
         }
 
+        // Spinner in POI heading
+        const poiSpinner = document.getElementById('poi-spinner');
+
+        function showPOILoading(show) {
+            if (poiSpinner) poiSpinner.style.display = show ? 'inline-block' : 'none';
+        }
+
+        const POI_ICONS = {
+            schools: { icon: 'ti-school',         color: '#DC2626', bg: '#FEE2E2' },
+            sports:  { icon: 'ti-ball-football',  color: '#92400E', bg: '#FEF3C7' },
+            parks:   { icon: 'ti-trees',          color: '#16A34A', bg: '#DCFCE7' },
+            busstops:{ icon: 'ti-bus',            color: '#2563EB', bg: '#DBEAFE' },
+        };
+
         function addPOILayer(type, geojson) {
-            const sourceId = 'poi-' + type;
-            const layerId  = 'poi-layer-' + type;
-            const cfg      = POI_CONFIG[type];
-
-            if (map.getSource(sourceId)) {
-                map.getSource(sourceId).setData(geojson);
-                map.setLayoutProperty(layerId, 'visibility', 'visible');
-                map.setPaintProperty(layerId, 'circle-radius', ['interpolate',['linear'],['zoom'], 10,2, 13,3, 16,5]);
-                return;
+            const cfg     = POI_CONFIG[type];
+            const iconCfg = POI_ICONS[type];
+            if (poiMarkers[type]) {
+                poiMarkers[type].forEach(m => m.remove());
             }
+            poiMarkers[type] = [];
 
-            map.addSource(sourceId, { type:'geojson', data:geojson });
-            map.addLayer({
-                id: layerId, type: 'circle',
-                source: sourceId,
-                paint: {
-                    'circle-radius': ['interpolate',['linear'],['zoom'], 10,2, 13,3, 16,5],
-                    'circle-color': cfg.bg,
-                    'circle-stroke-color': cfg.color,
-                    'circle-stroke-width': 1,
-                    'circle-opacity': 0.85
-                }
-            });
+            geojson.features.forEach(feat => {
+                const [lng, lat] = feat.geometry.coordinates;
+                const name = feat.properties.name;
 
-            // Hover cursor
-            map.on('mouseenter', layerId, () => { map.getCanvas().style.cursor = 'pointer'; });
-            map.on('mouseleave', layerId, () => { map.getCanvas().style.cursor = ''; });
+                // Solid filled circle marker with Tabler icon
+                const el = document.createElement('div');
+                el.className = 'poi-map-marker';
+                el.innerHTML = `<i class="ti ${iconCfg.icon}"></i>`;
+                el.style.cssText = `
+                    width: 16px;
+                    height: 16px;
+                    border-radius: 50%;
+                    background: ${iconCfg.bg};
+                    border: 1.5px solid ${iconCfg.color};
+                    display: flex;
+                    align-items: center;
+                    justify-content: center;
+                    font-size: 9px;
+                    color: ${iconCfg.color};
+                    cursor: pointer;
+                    box-shadow: 0 1px 3px rgba(0,0,0,0.2);
+                    transition: transform 0.15s, box-shadow 0.15s;
+                    flex-shrink: 0;
+                    pointer-events: all;
+                `;
+                el.addEventListener('mouseenter', () => {
+                    el.style.transform = 'scale(1.4)';
+                    el.style.boxShadow = '0 2px 6px rgba(0,0,0,0.25)';
+                });
+                el.addEventListener('mouseleave', () => {
+                    el.style.transform = 'scale(1)';
+                    el.style.boxShadow = '0 1px 3px rgba(0,0,0,0.2)';
+                });
 
-            // Click popup
-            map.on('click', layerId, e => {
-                const p    = e.features[0].properties;
-                const coords = e.features[0].geometry.coordinates.slice();
-                poiPopup
-                    .setLngLat(coords)
-                    .setHTML(
+                el.addEventListener('click', e => {
+                    e.stopPropagation();
+                    e.preventDefault();
+                    // Set content and position without triggering map pan
+                    poiPopup.setLngLat([lng, lat]);
+                    poiPopup.setHTML(
                         '<div style="font-family:Nunito,sans-serif;padding:4px 2px">' +
-                        '<div style="font-size:11px;font-weight:700;color:' + p.color + ';margin-bottom:2px;text-transform:uppercase;letter-spacing:0.05em">' + p.type + '</div>' +
-                        '<div style="font-size:13px;font-weight:600;color:#1f2937">' + p.name + '</div>' +
+                        '<div style="font-size:10px;font-weight:700;color:' + iconCfg.color + ';margin-bottom:3px;text-transform:uppercase;letter-spacing:0.05em">' +
+                        '<i class="ti ' + iconCfg.icon + '"></i> ' + cfg.label + '</div>' +
+                        '<div style="font-size:12px;font-weight:600;color:#1f2937">' + name + '</div>' +
                         '</div>'
-                    )
+                    );
+                    if (!poiPopup.isOpen()) poiPopup.addTo(map);
+                });
+
+                const marker = new maplibregl.Marker({ element: el, anchor: 'top' })
+                    .setLngLat([lng, lat])
                     .addTo(map);
-                e.stopPropagation();
+
+                poiMarkers[type].push(marker);
             });
         }
 
         function removePOILayer(type) {
-            const layerId = 'poi-layer-' + type;
-            if (map.getLayer(layerId)) map.setLayoutProperty(layerId, 'visibility', 'none');
+            if (poiMarkers[type]) {
+                poiMarkers[type].forEach(m => m.remove());
+                poiMarkers[type] = [];
+            }
         }
+
+        // Clear all POIs
+        function clearAllPOIs() {
+            Object.keys(POI_CONFIG).forEach(type => {
+                removePOILayer(type);
+                const btn = document.querySelector(`.poi-chip[data-poi="${type}"]`);
+                if (btn) { btn.dataset.active = 'false'; btn.classList.remove('active'); }
+            });
+            const clearPOI = document.getElementById('clear-poi');
+            if (clearPOI) clearPOI.style.display = 'none';
+        }
+
+        const clearPOIBtn = document.getElementById('clear-poi-btn');
+        if (clearPOIBtn) clearPOIBtn.addEventListener('click', clearAllPOIs);
 
         // Wire up toggle buttons
         document.querySelectorAll('.poi-chip').forEach(btn => {
@@ -1363,15 +1438,24 @@ document.addEventListener('DOMContentLoaded', () => {
                     btn.dataset.active = 'false';
                     btn.classList.remove('active');
                     removePOILayer(type);
+                    // Hide clear button if no POIs active
+                    const anyActive = [...document.querySelectorAll('.poi-chip')].some(b => b.dataset.active === 'true');
+                    const clearPOI = document.getElementById('clear-poi');
+                    if (clearPOI) clearPOI.style.display = anyActive ? 'block' : 'none';
                 } else {
                     btn.dataset.active = 'true';
                     btn.classList.add('active');
+                    const clearPOI = document.getElementById('clear-poi');
+                    if (clearPOI) clearPOI.style.display = 'block';
 
                     try {
+                        showPOILoading(true);
                         const geojson = await fetchPOI(type);
+                        showPOILoading(false);
                         addPOILayer(type, geojson);
                     } catch(err) {
                         console.error('POI fetch failed:', err);
+                        showPOILoading(false);
                         btn.dataset.active = 'false';
                         btn.classList.remove('active');
                     }
@@ -1575,11 +1659,11 @@ document.addEventListener('DOMContentLoaded', () => {
         ctx.fillText(legendTitle, LX + 10, LY + 18);
 
         const rows = [
-            { label: 'Poor (0.0 – 0.2)',     color: '#E24B4A' },
-            { label: 'Average (0.2 – 0.4)',   color: '#EF9F27' },
-            { label: 'Moderate (0.4 – 0.6)',  color: '#FAC775' },
-            { label: 'Good (0.6 – 0.8)',      color: '#97C459' },
-            { label: 'Excellent (0.8 – 1.0)', color: '#378ADD' },
+            { label: 'Poor (0.0 – 0.20)',     color: '#E24B4A' },
+            { label: 'Average (0.21 – 0.40)',  color: '#EF9F27' },
+            { label: 'Moderate (0.41 – 0.60)', color: '#FAC775' },
+            { label: 'Good (0.61 – 0.80)',     color: '#97C459' },
+            { label: 'Excellent (0.81 – 1.0)', color: '#378ADD' },
         ];
         rows.forEach((row, i) => {
             const ry = LY + 30 + i * 19;
@@ -1704,3 +1788,149 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
 })();
+// ══════════════════════════════════════════
+// ENVIRONMENTAL LAYERS — LCU + STL
+// ══════════════════════════════════════════
+document.addEventListener('DOMContentLoaded', () => {
+    // Wait for map to be initialised
+    const envInit = setInterval(() => {
+        if (!map || !map.loaded()) return;
+        clearInterval(envInit);
+        initEnvLayers();
+    }, 200);
+});
+
+function initEnvLayers() {
+    const BASE = 'https://urbanistamna.github.io/Dashboard-NetAScore4Teens/';
+
+    const ENV_LAYERS = {
+        lcu: {
+            url:        BASE + 'lcu.pmtiles',
+            sourceLayer:'land_cover',
+            type:       'fill',
+            label:      'Land Use (Urban Atlas 2021)',
+            paint: {
+                'fill-color': ['match', ['get', 'class_2021'],
+                    'Forests',                                          '#86efac',
+                    'Green urban areas (Public access)',                '#4ade80',
+                    'Green urban areas (Private access)',               '#6ee7b7',
+                    'Green urban areas (Unknown access conditions)',    '#a7f3d0',
+                    'Herbaceous vegetation associations (natural grassland, moors...)', '#d9f99d',
+                    'Pastures',                                        '#fef08a',
+                    'Arable land (annual crops)',                      '#fde68a',
+                    'Continuous urban fabric (S.L. : > 80%)',          '#94a3b8',
+                    'Discontinuous dense urban fabric (S.L. : 50% -  80%)', '#b0bac4',
+                    'Discontinuous medium density urban fabric (S.L. : 30% - 50%)', '#cbd5e1',
+                    'Discontinuous low density urban fabric (S.L. : 10% - 30%)',     '#e2e8f0',
+                    'Discontinuous very low density urban fabric (S.L. : < 10%)',    '#f1f5f9',
+                    'Industrial, commercial, public, military and private units',     '#fcd34d',
+                    'Fast transit roads and associated land',          '#e2e8f0',
+                    'Other roads and associated land',                 '#e2e8f0',
+                    'Railways and associated land',                    '#cbd5e1',
+                    'Airports',                                        '#e0e7ef',
+                    'Construction sites',                              '#fca5a5',
+                    'Mineral extraction and dump sites',               '#fdba74',
+                    'Land without current use',                        '#e5e7eb',
+                    'Isolated structures',                             '#d1d5db',
+                    'Open spaces with little or no vegetation (beaches, dunes, bare rocks, glaciers)', '#f3f4f6',
+                    '#e5e7eb'
+                ],
+                'fill-opacity': 0.35,
+                'fill-outline-color': 'rgba(0,0,0,0.06)'
+            }
+        },
+        stl: {
+            url:        BASE + 'stl.pmtiles',
+            sourceLayer:'street_trees',
+            type:       'fill',
+            label:      'Street Trees (Copernicus 2021)',
+            paint: {
+                'fill-color': '#22c55e',
+                'fill-opacity': 0.45,
+                'fill-outline-color': 'rgba(0,100,0,0.1)'
+            }
+        }
+    };
+
+    let envOpacity = 0.35;
+
+    function addEnvLayer(key) {
+        const cfg      = ENV_LAYERS[key];
+        const sourceId = 'env-' + key;
+        const layerId  = 'env-layer-' + key;
+
+        if (!map.getSource(sourceId)) {
+            map.addSource(sourceId, { type: 'vector', url: 'pmtiles://' + cfg.url });
+        }
+
+        if (!map.getLayer(layerId)) {
+            // Insert below road layers so roads stay on top
+            const firstRoadLayer = map.getLayer('walkability-layer') ? 'walkability-layer' : undefined;
+            map.addLayer({
+                id:     layerId,
+                type:   cfg.type,
+                source: sourceId,
+                'source-layer': cfg.sourceLayer,
+                paint:  cfg.paint
+            }, firstRoadLayer);
+        } else {
+            map.setLayoutProperty(layerId, 'visibility', 'visible');
+        }
+    }
+
+    function removeEnvLayer(key) {
+        const layerId = 'env-layer-' + key;
+        if (map.getLayer(layerId)) {
+            map.setLayoutProperty(layerId, 'visibility', 'none');
+        }
+    }
+
+    function updateEnvOpacity(opacity) {
+        envOpacity = opacity / 100;
+        Object.keys(ENV_LAYERS).forEach(key => {
+            const layerId = 'env-layer-' + key;
+            if (map.getLayer(layerId)) {
+                map.setPaintProperty(layerId, 'fill-opacity', envOpacity);
+            }
+        });
+    }
+
+    // Re-add layers after style swap (dark mode)
+    map.on('style.load', () => {
+        document.querySelectorAll('.env-chip[data-active="true"]').forEach(chip => {
+            addEnvLayer(chip.dataset.env);
+        });
+    });
+
+    // Wire up toggle chips
+    document.querySelectorAll('.env-chip').forEach(chip => {
+        chip.addEventListener('click', () => {
+            const key    = chip.dataset.env;
+            const active = chip.dataset.active === 'true';
+            const opRow  = document.getElementById('env-opacity-row');
+
+            if (active) {
+                chip.dataset.active = 'false';
+                chip.classList.remove('active');
+                removeEnvLayer(key);
+                const anyActive = [...document.querySelectorAll('.env-chip')].some(c => c.dataset.active === 'true');
+                if (opRow) opRow.style.display = anyActive ? 'flex' : 'none';
+            } else {
+                chip.dataset.active = 'true';
+                chip.classList.add('active');
+                addEnvLayer(key);
+                if (opRow) opRow.style.display = 'flex';
+            }
+        });
+    });
+
+    // Opacity slider
+    const slider = document.getElementById('env-opacity-slider');
+    const valEl  = document.getElementById('env-opacity-value');
+    if (slider) {
+        slider.addEventListener('input', () => {
+            valEl.textContent = slider.value + '%';
+            updateEnvOpacity(parseInt(slider.value));
+        });
+    }
+}
