@@ -10,7 +10,7 @@
     --bg-grad-b: #f4efe8;
 }
 
-/* ── DARK MODE ── */
+/* ── DARK MODE Settings ── */
 body.dark-mode {
     --panel: rgba(28,30,36,0.97);
     --border: rgba(255,255,255,0.09);
