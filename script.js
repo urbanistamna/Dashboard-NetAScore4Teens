@@ -414,11 +414,11 @@ document.addEventListener('DOMContentLoaded', () => {
     // THRESHOLD — gradient slider + 5 emoji chips
     // =========================================================
     const CHIP_RANGES = [
-        { min:0.0,  max:0.2 },  // Poor      0.00 – 0.20
-        { min:0.21, max:0.4 },  // Average   0.21 – 0.40
-        { min:0.41, max:0.6 },  // Moderate  0.41 – 0.60
-        { min:0.61, max:0.8 },  // Good      0.61 – 0.80
-        { min:0.81, max:1.0 },  // Excellent 0.81 – 1.00
+        { min:0.0,  max:0.21 },  // Poor      0.00 – 0.20
+        { min:0.21, max:0.41 },  // Average   0.21 – 0.40
+        { min:0.41, max:0.61 },  // Moderate  0.41 – 0.60
+        { min:0.61, max:0.81 },  // Good      0.61 – 0.80
+        { min:0.81, max:1.01 },  // Excellent 0.81 – 1.00
     ];
     let thresholdMax = 1.0;
 
@@ -1277,35 +1277,76 @@ document.addEventListener('DOMContentLoaded', () => {
 
         const poiCache   = {}; // cache fetched GeoJSON per type
         const poiMarkers = {}; // store Mapbox markers per type for removal
-        const poiPopup = new maplibregl.Popup({ 
-            closeButton: true, 
-            closeOnClick: false, 
-            maxWidth: '220px',
-            anchor: 'bottom',
-            offset: 12,
-            focusAfterOpen: false
-        });
+        // Custom POI tooltip — plain HTML div, never triggers map pan
+        const poiTooltip = document.createElement('div');
+        poiTooltip.id = 'poi-tooltip';
+        poiTooltip.style.cssText = `
+            position: absolute;
+            z-index: 9999;
+            background: rgba(255,252,248,0.98);
+            border: 1px solid rgba(120,110,95,0.18);
+            border-radius: 10px;
+            padding: 8px 12px;
+            box-shadow: 0 4px 16px rgba(0,0,0,0.12);
+            font-family: Nunito, sans-serif;
+            pointer-events: none;
+            display: none;
+            max-width: 200px;
+            backdrop-filter: blur(10px);
+        `;
+        document.querySelector('.map-wrapper').appendChild(poiTooltip);
 
-        // Prevent map from panning when popup opens
-        poiPopup.on('open', () => {
-            map.dragPan.enable();
-        });
+        function showPOITooltip(x, y, iconCfg, cfgLabel, name) {
+            poiTooltip.innerHTML = 
+                '<div style="font-size:10px;font-weight:700;color:' + iconCfg.color + ';margin-bottom:3px;text-transform:uppercase;letter-spacing:0.05em">' +
+                '<i class="ti ' + iconCfg.icon + '"></i> ' + cfgLabel + '</div>' +
+                '<div style="font-size:12px;font-weight:600;color:#1f2937">' + name + '</div>';
+            // Position relative to map wrapper
+            const wrapper = document.querySelector('.map-wrapper').getBoundingClientRect();
+            const tx = x - wrapper.left + 10;
+            const ty = y - wrapper.top - 60;
+            poiTooltip.style.left = tx + 'px';
+            poiTooltip.style.top  = ty + 'px';
+            poiTooltip.style.display = 'block';
+        }
+
+        function hidePOITooltip() {
+            poiTooltip.style.display = 'none';
+        }
+
+        // Close tooltip on map click or drag
+        map.on('click', () => hidePOITooltip());
+        map.on('dragstart', () => hidePOITooltip());
 
         async function fetchPOI(type) {
             if (poiCache[type]) return poiCache[type];
-            const cfg  = POI_CONFIG[type];
-            // Try primary, fall back to mirror
+            const cfg = POI_CONFIG[type];
+
+            // 1) Prefer a pre-fetched static file (fast, no rate limits, no timeouts).
+            //    Generate these once with fetch-poi-data.mjs and upload to /data/.
+            try {
+                const resp = await fetch(`/data/${type}.geojson`);
+                if (resp.ok) {
+                    const geojson = await resp.json();
+                    poiCache[type] = geojson;
+                    return geojson;
+                }
+            } catch (e) { /* fall through to live fetch */ }
+
+            // 2) Fall back to live Overpass if the static file is missing/unreachable.
             const endpoints = [
                 'https://overpass.kumi.systems/api/interpreter',
                 'https://overpass-api.de/api/interpreter',
+                'https://overpass.openstreetmap.fr/api/interpreter',
             ];
             let data;
             for (const endpoint of endpoints) {
                 try {
                     const controller = new AbortController();
-                    const timeout = setTimeout(() => controller.abort(), 10000); // 10s timeout
+                    const timeout = setTimeout(() => controller.abort(), 20000); // 20s timeout
                     const resp = await fetch(endpoint + '?data=' + encodeURIComponent(cfg.query), { signal: controller.signal });
                     clearTimeout(timeout);
+                    if (!resp.ok) continue;
                     data = await resp.json();
                     break;
                 } catch(e) { continue; }
@@ -1371,32 +1412,28 @@ document.addEventListener('DOMContentLoaded', () => {
                     color: ${iconCfg.color};
                     cursor: pointer;
                     box-shadow: 0 1px 3px rgba(0,0,0,0.2);
-                    transition: transform 0.15s, box-shadow 0.15s;
                     flex-shrink: 0;
                     pointer-events: all;
                 `;
                 el.addEventListener('mouseenter', () => {
-                    el.style.transform = 'scale(1.4)';
-                    el.style.boxShadow = '0 2px 6px rgba(0,0,0,0.25)';
+                    el.style.boxShadow = '0 2px 8px rgba(0,0,0,0.3)';
+                    el.style.borderWidth = '2px';
                 });
                 el.addEventListener('mouseleave', () => {
-                    el.style.transform = 'scale(1)';
                     el.style.boxShadow = '0 1px 3px rgba(0,0,0,0.2)';
+                    el.style.borderWidth = '1.5px';
                 });
 
                 el.addEventListener('click', e => {
                     e.stopPropagation();
                     e.preventDefault();
-                    // Set content and position without triggering map pan
-                    poiPopup.setLngLat([lng, lat]);
-                    poiPopup.setHTML(
-                        '<div style="font-family:Nunito,sans-serif;padding:4px 2px">' +
-                        '<div style="font-size:10px;font-weight:700;color:' + iconCfg.color + ';margin-bottom:3px;text-transform:uppercase;letter-spacing:0.05em">' +
-                        '<i class="ti ' + iconCfg.icon + '"></i> ' + cfg.label + '</div>' +
-                        '<div style="font-size:12px;font-weight:600;color:#1f2937">' + name + '</div>' +
-                        '</div>'
-                    );
-                    if (!poiPopup.isOpen()) poiPopup.addTo(map);
+                    const rect = el.getBoundingClientRect();
+                    showPOITooltip(rect.left + rect.width / 2, rect.top, iconCfg, cfg.label, name);
+                });
+
+                el.addEventListener('mouseleave', () => {
+                    // Hide tooltip after short delay to allow reading
+                    setTimeout(hidePOITooltip, 2000);
                 });
 
                 const marker = new maplibregl.Marker({ element: el, anchor: 'top' })
@@ -1663,7 +1700,7 @@ document.addEventListener('DOMContentLoaded', () => {
             { label: 'Average (0.21 – 0.40)',  color: '#EF9F27' },
             { label: 'Moderate (0.41 – 0.60)', color: '#FAC775' },
             { label: 'Good (0.61 – 0.80)',     color: '#97C459' },
-            { label: 'Excellent (0.81 – 1.0)', color: '#378ADD' },
+            { label: 'Excellent (0.8 – 1.0)', color: '#378ADD' },
         ];
         rows.forEach((row, i) => {
             const ry = LY + 30 + i * 19;
