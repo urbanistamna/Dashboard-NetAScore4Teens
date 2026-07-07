@@ -5,12 +5,21 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>NetAScore4Teens</title>
     <link href="https://unpkg.com/maplibre-gl@4.7.1/dist/maplibre-gl.css" rel="stylesheet">
-    <script src="https://unpkg.com/maplibre-gl@4.7.1/dist/maplibre-gl.js"></script>
-    <script src="https://unpkg.com/pmtiles@3.0.6/dist/pmtiles.js"></script>
+    <script src="https://unpkg.com/maplibre-gl@4.7.1/dist/maplibre-gl.js" onerror="window.__mapScriptFailed=true"></script>
+    <script src="https://unpkg.com/pmtiles@3.0.6/dist/pmtiles.js" onerror="window.__mapScriptFailed=true"></script>
     <script>
-        // Register the pmtiles:// protocol so MapLibre can read the self-hosted tileset
-        const pmtilesProtocol = new pmtiles.Protocol();
-        maplibregl.addProtocol('pmtiles', pmtilesProtocol.tile);
+        // Register the pmtiles:// protocol so MapLibre can read the self-hosted tileset.
+        // Guard against maplibre-gl/pmtiles failing to load (flaky network, blocked CDN) —
+        // without this, the whole page would silently fail with a blank map and no explanation.
+        try {
+            if (window.__mapScriptFailed || typeof maplibregl === 'undefined' || typeof pmtiles === 'undefined') {
+                throw new Error('map libraries failed to load');
+            }
+            const pmtilesProtocol = new pmtiles.Protocol();
+            maplibregl.addProtocol('pmtiles', pmtilesProtocol.tile);
+        } catch (e) {
+            window.__mapScriptFailed = true;
+        }
     </script>
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@latest/dist/tabler-icons.min.css">
     <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -778,11 +787,20 @@
                 <h3><i class="ti ti-leaf"></i> Environmental Layers</h3>
                 <div class="env-chips">
                     <div class="env-chip" data-env="lcu" data-active="false">
-                        <i class="ti ti-map-2"></i><span>Land Use</span>
+                        <i class="ti ti-map-2"></i><span>Land Use</span><span class="poi-spinner env-chip-spinner" id="env-spinner-lcu" style="display:none;"></span>
                     </div>
                     <div class="env-chip" data-env="stl" data-active="false">
-                        <i class="ti ti-trees"></i><span>Street Trees</span>
+                        <i class="ti ti-trees"></i><span>Street Trees</span><span class="poi-spinner env-chip-spinner" id="env-spinner-stl" style="display:none;"></span>
                     </div>
+                </div>
+                <div class="env-legend" id="lcu-panel-legend" style="display:none;">
+                    <div class="env-legend-row"><div class="env-legend-swatch" style="background:#14b8a6"></div><span>Forests &amp; green space</span></div>
+                    <div class="env-legend-row"><div class="env-legend-swatch" style="background:#facc15"></div><span>Agricultural &amp; vegetation</span></div>
+                    <div class="env-legend-row"><div class="env-legend-swatch" style="background:#ec4899"></div><span>Urban fabric (built-up)</span></div>
+                    <div class="env-legend-row"><div class="env-legend-swatch" style="background:#a855f7"></div><span>Industrial / commercial</span></div>
+                    <div class="env-legend-row"><div class="env-legend-swatch" style="background:#94a3b8"></div><span>Roads, rail &amp; transport</span></div>
+                    <div class="env-legend-row"><div class="env-legend-swatch" style="background:#fb7185"></div><span>Construction / extraction</span></div>
+                    <div class="env-legend-row"><div class="env-legend-swatch" style="background:#e2e8f0"></div><span>Other / unused land</span></div>
                 </div>
                 <div class="env-opacity-row" id="env-opacity-row" style="display:none;">
                     <label class="env-opacity-label"><i class="ti ti-adjustments"></i> Opacity</label>
@@ -797,6 +815,12 @@
     <!-- MAP -->
     <div class="map-wrapper">
         <div id="map"></div>
+        <div class="map-loading-overlay" id="map-loading-overlay">
+            <span class="poi-spinner" id="map-loading-spinner" style="width:22px;height:22px;border-width:3px;"></span>
+            <span id="map-loading-text">Loading road network…</span>
+            <button id="map-loading-reload-btn" onclick="window.location.reload()" style="display:none;margin-top:6px;padding:8px 18px;border-radius:20px;border:none;background:#2563eb;color:#fff;font-family:'Nunito',sans-serif;font-weight:700;font-size:13px;cursor:pointer;">Reload page</button>
+        </div>
+        <div class="env-tooltip" id="env-tooltip" style="display:none;"></div>
         <div class="map-hint" id="map-hint">
             <i class="ti ti-hand-click"></i>
             <span>Hover to preview · Click to pin details</span>
@@ -961,11 +985,6 @@
             </div>
             <div class="empty-title">Pick a road!</div>
             <p>Hover over any road on the map to see how safe, comfortable and fun it is for teens.</p>
-            <div class="empty-tags">
-                <span><i class="ti ti-shield-check"></i> Safety</span>
-                <span><i class="ti ti-leaf"></i> Comfort</span>
-                <span><i class="ti ti-star"></i> Joy</span>
-            </div>
         </div>
 
         <div class="detail-loaded" id="detail-loaded" style="display:none">
@@ -1030,16 +1049,12 @@
                     <div class="exp-quote-mark">"</div>
                     <div class="exp-quote-header">
                         <div class="exp-quote-icon"><i class="ti ti-mood-kid"></i></div>
-                        <span class="exp-quote-byline">A child's voice</span>
+                        <span class="exp-quote-byline">A Teen's voice</span>
                         <div class="exp-mood-pill" id="exp-mood-pill"></div>
                     </div>
                     <p class="exp-quote" id="exp-quote">–</p>
                     <p class="exp-context" id="exp-context"></p>
                 </div>
-
-                <!-- Group summary cards -->
-                <h3 class="detail-section-title sec-exp-scores"><i class="ti ti-chart-bar"></i> How it scores</h3>
-                <div class="exp-groups" id="exp-groups"></div>
 
                 <!-- Teen-Friendly Checklist -->
                 <h3 class="detail-section-title sec-exp-check"><i class="ti ti-checklist"></i> Teen-Friendly Checklist</h3>
@@ -1088,6 +1103,6 @@
     </div>
 
 </div><!-- end #map-container -->
-<script src="./script.js?v=32"></script>
+<script src="./script.js?v=34"></script>
 </body>
 </html>

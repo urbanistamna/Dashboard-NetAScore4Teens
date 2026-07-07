@@ -176,6 +176,12 @@ document.addEventListener('DOMContentLoaded', () => {
             // diff:false forces a full style replace — diffing between two unrelated
             // style JSONs (positron vs dark) can otherwise leave custom layers broken
             map.setStyle(style, { diff: false });
+            // Guard: setStyle can occasionally cause MapLibre to re-insert its own
+            // default attribution control, duplicating our custom .map-plain-attrib
+            // div. Strip any native control if it appears.
+            map.once('styledata', () => {
+                document.querySelectorAll('.maplibregl-ctrl-attrib').forEach(el => el.remove());
+            });
         }
         localStorage.setItem('n4k-dark', on ? '1' : '0');
         // Re-render chart with dark-aware colours
@@ -188,8 +194,25 @@ document.addEventListener('DOMContentLoaded', () => {
     if (btn) btn.addEventListener('click', () => applyDark(!dark));
 });
 
+function showMapLoadError() {
+    const overlay  = document.getElementById('map-loading-overlay');
+    const spinner  = document.getElementById('map-loading-spinner');
+    const text     = document.getElementById('map-loading-text');
+    const reloadBtn= document.getElementById('map-loading-reload-btn');
+    if (overlay) overlay.classList.remove('hidden');
+    if (spinner) spinner.style.display = 'none';
+    if (text) text.textContent = 'Map failed to load — please check your connection.';
+    if (reloadBtn) reloadBtn.style.display = 'inline-block';
+}
+
 document.addEventListener('DOMContentLoaded', () => {
-    if (typeof maplibregl === 'undefined') { console.error('MapLibre GL JS not loaded'); return; }
+    if (window.__mapScriptFailed || typeof maplibregl === 'undefined') {
+        console.error('MapLibre GL JS not loaded');
+        showMapLoadError();
+        return;
+    }
+
+    try {
 
     const TILESET_URL  = 'https://urbanistamna.github.io/Dashboard-NetAScore4Teens/netascore.pmtiles';
     const SOURCE_LAYER = 'netascore_salzburg_edges';
@@ -308,9 +331,63 @@ document.addEventListener('DOMContentLoaded', () => {
     ];
 
     // =========================================================
-    // NORMALISATION
+    // MODEL WEIGHTS — copied exactly from profile_walk_kids.yml / profile_bike_kids.yml
+    // Used to reconstruct exact per-indicator sub-scores from the tile's
+    // index_walk_ft_explanation / index_bike_ft_explanation fields.
     // =========================================================
-    function normaliseField(key, raw) {
+    const MODEL_WEIGHTS = {
+        walkability: {
+            pedestrian_infrastructure: 0.4, road_category: 0.4, max_speed_greatest: 0.3,
+            gradient: 0.3, number_lanes: 0.1, crossings: 0.2, buildings: 0.1,
+            greenness: 0.3, water: 0.4, noise: 0.3, lighting: 0.3,
+            play_and_outdoor: 0.2, attractiveness: 0.1, comfort_facilities: 0.1, eating_facilities: 0.1,
+        },
+        bikeability: {
+            bicycle_infrastructure: 0.2, designated_route: 0.1, road_category: 0.3,
+            max_speed: 0.1, parking: 0.1, pavement: 0.1, gradient: 0.1,
+            sights: 0.4, lighting: 0.3, play_and_outdoor: 0.2, attractiveness: 0.1,
+            comfort_facilities: 0.1, eating_facilities: 0.1,
+        }
+    };
+
+    // Maps this dashboard's indicator keys (e.g. 'pedestrian_infrastructure_ft')
+    // to the base name used in the YAML / tile explanation object (e.g. 'pedestrian_infrastructure').
+    function toModelKey(key) {
+        return key.replace(/_ft$/, '');
+    }
+
+    // Parses index_walk_ft_explanation / index_bike_ft_explanation for the
+    // currently selected mode. Tolerates the field being a JSON string or
+    // already a parsed object (tile encoding can vary).
+    function getExplanationObj(props) {
+        const field = currentMode === 'walkability' ? props.index_walk_ft_explanation : props.index_bike_ft_explanation;
+        if (!field) return null;
+        if (typeof field === 'object') return field;
+        try { return JSON.parse(field); } catch (e) { return null; }
+    }
+
+    // Returns { value, source } where source is 'model' (exact, reconstructed
+    // from the real NetAScore explanation field) or 'estimated' (fallback via
+    // normaliseField for indicators the model doesn't report per-road).
+    function getIndicatorScore(def, props) {
+        const modelKey = toModelKey(def.key);
+        const weights  = MODEL_WEIGHTS[currentMode];
+        const expl     = getExplanationObj(props);
+
+        if (expl && weights && Object.prototype.hasOwnProperty.call(expl, modelKey) && weights[modelKey]) {
+            const totalActiveWeight = Object.keys(expl).reduce((sum, k) => sum + (weights[k] || 0), 0);
+            const contribution = expl[modelKey];
+            if (totalActiveWeight > 0 && typeof contribution === 'number') {
+                const subscore = contribution * totalActiveWeight / weights[modelKey];
+                return { value: Math.max(0, Math.min(1, subscore)), source: 'model' };
+            }
+        }
+        const norm = normaliseField(def.key, props[def.key], props);
+        return { value: norm, source: norm === null ? null : 'estimated' };
+    }
+
+
+    function normaliseField(key, raw, allProps) {
         if (raw === null || raw === undefined || raw === '') return null;
         const CAT = {
             bicycle_infrastructure_ft: {
@@ -324,7 +401,9 @@ document.addEventListener('DOMContentLoaded', () => {
                 no:0, no_separate:0
             },
             designated_route_ft: { international:1, national:0.9, regional:0.85, local:0.8, unknown:0.8, no:0 },
-            road_category:       { no_mit:1, calmed:0.9, service:0.85, residential:0.8, secondary:0.2, primary:0, path:currentMode==='walkability'?1:0, track:0 },
+            road_category:       currentMode==='walkability'
+                ? { no_mit:1, calmed:0.9, service:0.85, residential:0.8, secondary:0.2, primary:0, path:1 }
+                : { no_mit:1, calmed:0.9, service:0.85, residential:0.8, secondary:0.2, primary:0 },
             parking:             { forbidden:1, implicit:0.5, allowed:0 },
             pavement:            { asphalt:1, gravel:0.75, soft:0.4, cobble:0 },
             lighting:            { yes:1, intermittent:0.5, no:0 },
@@ -341,15 +420,23 @@ document.addEventListener('DOMContentLoaded', () => {
         switch (key) {
             case 'greenness':        return num > 75 ? 1 : num > 50 ? 0.9 : num > 25 ? 0.8 : num > 0 ? 0.7 : 0;
             case 'water':            return num > 0 ? 1 : 0;
-            case 'sights':           return num > 0 ? Math.min(1, num/50) : 0;
-            case 'attractiveness':   return num > 0 ? Math.min(1, num/50) : 0;
-            case 'traffic_calming': return num > 0 ? Math.min(1, num/3)  : 0;
-            case 'play_and_outdoor': return num > 0 ? Math.min(1, num/30) : 0;
-            case 'eating_facilities':return num > 0 ? Math.min(1, num/20) : 0;
-            case 'facilities':       return num > 0 ? Math.min(1, num/20) : 0;
-            case 'comfort_facilities':return num > 0 ? Math.min(1, num/20) : 0;
+            case 'sights':           return num > 0 ? 1 : 0;
+            case 'attractiveness':   return num > 0 ? 1 : 0;
+            case 'traffic_calming': return num > 0 ? Math.min(1, num/3)  : 0; // not in official YAML profile yet — placeholder pending model support
+            case 'play_and_outdoor': return num > 0 ? 1 : 0;
+            case 'eating_facilities':return num > 0 ? 1 : 0;
+            case 'facilities':       return num > 0 ? 1 : 0;
+            case 'comfort_facilities':return num > 0 ? 1 : 0;
             case 'benches':          return num > 0 ? 1 : 0;
-            case 'crossings':        return num > 0 ? Math.min(1, num/5) : 0;
+            case 'crossings': {
+                // YAML: >0 crossings -> 1. At 0 crossings, the real model looks at
+                // road_category instead: primary/secondary/missing -> 0, residential -> 0.5, else -> 1.
+                if (num > 0) return 1;
+                const rc = String((allProps && allProps.road_category) || '').toLowerCase();
+                if (rc === 'primary' || rc === 'secondary' || rc === '') return 0;
+                if (rc === 'residential') return 0.5;
+                return 1;
+            }
             case 'noise':            return num > 70 ? 0 : num > 55 ? 0.6 : num > 10 ? 0.8 : 1;
             case 'max_speed_ft': case 'max_speed_greatest':
                 return num >= 100 ? 0 : num >= 80 ? 0.2 : num >= 70 ? 0.3 : num >= 60 ? 0.4 : num >= 50 ? 0.6 : num >= 30 ? 0.85 : num > 0 ? 0.9 : 1;
@@ -397,17 +484,6 @@ document.addEventListener('DOMContentLoaded', () => {
         if (v <= 0.20) return 'Poor'; if (v <= 0.40) return 'Average';
         if (v <= 0.60) return 'Moderate'; if (v <= 0.80) return 'Good';
         return 'Excellent';
-    }
-
-    function computeGroupScore(props, groupId) {
-        const inds = getIndicators().filter(i => i.group === groupId && i.weight > 0);
-        let wSum = 0, wTotal = 0;
-        inds.forEach(ind => {
-            const n = normaliseField(ind.key, props[ind.key]);
-            if (n === null) return;
-            wSum += n * ind.weight; wTotal += ind.weight;
-        });
-        return wTotal > 0 ? wSum / wTotal : null;
     }
 
     // =========================================================
@@ -619,7 +695,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 indList.appendChild(hdr);
             }
             const raw    = props[def.key];
-            const norm   = normaliseField(def.key, raw);
+            const { value: norm } = getIndicatorScore(def, props);
             const isNull = norm === null;
             const isZeroWeight = def.weight === 0;
             const barPct   = isNull ? 0 : Math.max(0, Math.min(1, norm));
@@ -725,9 +801,9 @@ document.addEventListener('DOMContentLoaded', () => {
         // Yellow(0.4-0.6) = Dull  ... unless greenness is high, then Relaxing
         // Green (0.6-0.8) = Relaxing
         // Blue  (0.8-1.0) = Welcoming
-        const safeSc  = computeGroupScore(props, 'safety');
-        const comfSc  = computeGroupScore(props, 'comfort');
-        const joySc   = computeGroupScore(props, 'joy');
+        const safeSc  = null;
+        const comfSc  = null;
+        const joySc   = null;
         const greenRaw = parseFloat(props['greenness']);
         const hasGreenery = !isNaN(greenRaw) && greenRaw > 40;
 
@@ -754,59 +830,6 @@ document.addEventListener('DOMContentLoaded', () => {
             moodPill.style.color = mood.color;
         }
 
-        // ── 4. GROUP SUMMARY CARDS ──
-        const gScores = { safety: safeSc, comfort: comfSc, joy: joySc };
-        const GROUP_META = [
-            { id:'safety',  label:'Safety',  icon:'ti-shield-check', iconBg:'rgba(226,75,74,0.12)',  iconColor:'#E24B4A', cardBg:'rgba(226,75,74,0.06)',  cardBorder:'rgba(226,75,74,0.15)', sentences: {
-                excellent:'Very safe. Calm road, slow traffic, good crossings.',
-                good:     'Mostly safe, good infrastructure for children.',
-                moderate: 'Some safety concerns. Watch out for traffic.',
-                average:  'Feels unsafe in places. Cars move too fast.',
-                poor:     'Serious safety issues for children.',
-            }},
-            { id:'comfort', label:'Comfort', icon:'ti-leaf',          iconBg:'rgba(239,159,39,0.12)', iconColor:'#EF9F27', cardBg:'rgba(239,159,39,0.06)', cardBorder:'rgba(239,159,39,0.15)', sentences: {
-                excellent:'Very comfortable. Green, quiet and easy to walk.',
-                good:     'Comfortable enough. Good surface, not too noisy.',
-                moderate: 'Somewhat comfortable, but could be greener.',
-                average:  'Not very comfortable. Noisy or lacking greenery.',
-                poor:     'Hard to walk comfortably. Steep, loud, or exposed.',
-            }},
-            { id:'joy',     label:'Joy',     icon:'ti-star',          iconBg:'rgba(155,89,182,0.12)', iconColor:'#9B59B6', cardBg:'rgba(155,89,182,0.06)', cardBorder:'rgba(155,89,182,0.15)', sentences: {
-                excellent:'Lots to see and do. A genuinely joyful route.',
-                good:     'Some interesting spots make this route enjoyable.',
-                moderate: 'Not much to look at. Could be more lively.',
-                average:  'Pretty dull. Children would find this boring.',
-                poor:     'Nothing to enjoy here. Grey and uninviting.',
-            }},
-        ];
-        const expGroups = document.getElementById('exp-groups');
-        if (expGroups) {
-            expGroups.innerHTML = '';
-            GROUP_META.forEach(gm => {
-                const gsc = gScores[gm.id];
-                const pct = gsc === null ? 0 : Math.round(gsc * 100);
-                const col = scoreColor(gsc);
-                const t   = gsc === null ? 'moderate'
-                    : gsc > 0.8 ? 'excellent' : gsc > 0.6 ? 'good'
-                    : gsc > 0.4 ? 'moderate'  : gsc > 0.2 ? 'average' : 'poor';
-                const card = document.createElement('div');
-                card.className = 'exp-group-card';
-                card.style.background  = gm.cardBg;
-                card.style.borderColor = gm.cardBorder;
-                card.innerHTML =
-                    '<div class="exp-group-card-top">' +
-                      '<div class="exp-group-icon" style="background:' + gm.iconBg + ';color:' + gm.iconColor + '">' +
-                        '<i class="ti ' + gm.icon + '"></i>' +
-                      '</div>' +
-                      '<span class="exp-group-pct" style="color:' + col + '">' + (gsc === null ? '–' : pct + '%') + '</span>' +
-                    '</div>' +
-                    '<div class="exp-group-name">' + gm.label + '</div>' +
-                    '<div class="exp-group-bar-wrap"><div class="exp-group-bar-fill" style="width:' + pct + '%;background:' + col + '"></div></div>' +
-                    '<p class="exp-group-sentence">' + gm.sentences[t] + '</p>';
-                expGroups.appendChild(card);
-            });
-        }
-
         // ── 5. CHILD-FRIENDLY CHECKLIST ──
         const CHECKLIST_ITEMS = [
             { key: isWalk ? 'pedestrian_infrastructure_ft' : 'bicycle_infrastructure_ft',
@@ -827,7 +850,7 @@ document.addEventListener('DOMContentLoaded', () => {
             expChecklist.innerHTML = '';
             CHECKLIST_ITEMS.filter(item => !item.walkOnly || isWalk).forEach(item => {
                 const raw    = props[item.key];
-                const norm   = normaliseField(item.key, raw);
+                const { value: norm } = getIndicatorScore(item, props);
                 const isNull = norm === null;
                 const pass   = !isNull && item.passTest(norm);
                 const rowClass   = isNull ? 'row-miss' : (pass ? 'row-pass' : 'row-fail');
@@ -863,7 +886,7 @@ document.addEventListener('DOMContentLoaded', () => {
         const ideas = [];
         IMPROVE_MAP.filter(item => !item.walkOnly || isWalk).forEach(item => {
             const raw  = props[item.key];
-            const norm = normaliseField(item.key, raw);
+            const { value: norm } = getIndicatorScore(item, props);
             if (norm !== null && norm < item.threshold) ideas.push(item);
         });
 
@@ -910,13 +933,14 @@ document.addEventListener('DOMContentLoaded', () => {
             getIndicators()
                 .filter(i => i.group === g.id && i.weight > 0) // only weighted indicators
                 .forEach(ind => {
-                    const norm = normaliseField(ind.key, props[ind.key]);
+                    const { value: norm, source } = getIndicatorScore(ind, props);
                     if (norm === null) return; // only show indicators with real data
+                    const col = scoreColor(norm);
                     labels.push(ind.label);
                     data.push(+(norm * 100).toFixed(1));
-                    bg.push(g.color + 'cc');
-                    bd.push(g.color);
-                    indMeta.push({ key: ind.key, raw: props[ind.key], norm });
+                    bg.push(col + 'cc');
+                    bd.push(col);
+                    indMeta.push({ key: ind.key, raw: props[ind.key], norm, source });
                 });
         });
 
@@ -1069,6 +1093,17 @@ document.addEventListener('DOMContentLoaded', () => {
     map.addControl(new maplibregl.FullscreenControl({ container: document.querySelector('.map-wrapper') }), 'top-right');
     map.addControl(new maplibregl.ScaleControl({ maxWidth: 120, unit: 'metric' }), 'bottom-left');
 
+    // Surface any hard map error (e.g. unreachable basemap style) visibly instead of silent blank
+    map.on('error', e => {
+        console.error('Map error:', e && e.error);
+    });
+    // Absolute last-resort safety net: if the map has still never fired 'load' after
+    // 20s (style unreachable, network completely blocked, etc.) show a clear error
+    // with a reload option instead of an endless spinner or silent blank map.
+    let mapDidLoad = false;
+    map.once('load', () => { mapDidLoad = true; });
+    setTimeout(() => { if (!mapDidLoad) showMapLoadError(); }, 20000);
+
     function addMapLayers() {
         if (!map.getSource('netascore')) {
             map.addSource('netascore', { type:'vector', url:'pmtiles://' + TILESET_URL });
@@ -1140,6 +1175,27 @@ document.addEventListener('DOMContentLoaded', () => {
     });
 
     map.on('load', () => {
+        document.querySelectorAll('.maplibregl-ctrl-attrib').forEach(el => el.remove());
+
+        // Hide the loading overlay the moment roads actually become visible on
+        // screen (not when the whole source finishes loading, which can take
+        // much longer since it waits for every tile in view).
+        const loadingOverlay = document.getElementById('map-loading-overlay');
+        function hideLoadingOverlay() {
+            if (loadingOverlay) loadingOverlay.classList.add('hidden');
+        }
+        function checkRoadsVisible() {
+            const features = map.queryRenderedFeatures(undefined, { layers: ['walkability-layer', 'bikeability-layer'] });
+            if (features.length > 0) {
+                hideLoadingOverlay();
+                map.off('render', checkRoadsVisible);
+            }
+        }
+        map.on('render', checkRoadsVisible);
+        // Safety net: never leave the user staring at a spinner forever, even if the
+        // render check is missed or the tileset genuinely fails to load.
+        setTimeout(() => { hideLoadingOverlay(); map.off('render', checkRoadsVisible); }, 15000);
+
         // Legend toggle — minimized by default, click to expand
         const mlToggle  = document.getElementById('ml-toggle');
         const mlBody    = document.getElementById('ml-body');
@@ -1328,6 +1384,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 const resp = await fetch(`data/${type}.geojson`);
                 if (resp.ok) {
                     const geojson = await resp.json();
+                    geojson.features = dedupePOIFeatures(geojson.features, type === 'busstops' ? 150 : 50);
                     poiCache[type] = geojson;
                     return geojson;
                 }
@@ -1364,9 +1421,25 @@ document.addEventListener('DOMContentLoaded', () => {
                 };
             }).filter(Boolean);
 
-            const geojson = { type:'FeatureCollection', features };
+            const geojson = { type:'FeatureCollection', features: dedupePOIFeatures(features, type === 'busstops' ? 150 : 50) };
             poiCache[type] = geojson;
             return geojson;
+        }
+
+        function dedupePOIFeatures(features, gridMeters = 50) {
+            // Overpass often returns the same real-world POI twice (e.g. as both a
+            // node and a way, or matched by two different tag filters). Collapse
+            // features that share a normalized name and sit within ~gridMeters of each other.
+            const kept = [];
+            const cellSize = 111320 / gridMeters; // rough meters-per-degree at this latitude
+            const round = (n) => Math.round(n * cellSize) / cellSize;
+            const normName = (s) => (s || '').trim().toLowerCase();
+            for (const f of features) {
+                const [lon, lat] = f.geometry.coordinates;
+                const key = `${normName(f.properties.name)}|${round(lat)}|${round(lon)}`;
+                if (!kept.some(k => k.key === key)) kept.push({ key, feature: f });
+            }
+            return kept.map(k => k.feature);
         }
 
         // Spinner in POI heading
@@ -1400,28 +1473,28 @@ document.addEventListener('DOMContentLoaded', () => {
                 el.className = 'poi-map-marker';
                 el.innerHTML = `<i class="ti ${iconCfg.icon}"></i>`;
                 el.style.cssText = `
-                    width: 16px;
-                    height: 16px;
+                    width: 10px;
+                    height: 10px;
                     border-radius: 50%;
                     background: ${iconCfg.bg};
-                    border: 1.5px solid ${iconCfg.color};
+                    border: 1px solid ${iconCfg.color};
                     display: flex;
                     align-items: center;
                     justify-content: center;
-                    font-size: 9px;
+                    font-size: 6px;
                     color: ${iconCfg.color};
                     cursor: pointer;
-                    box-shadow: 0 1px 3px rgba(0,0,0,0.2);
+                    box-shadow: 0 1px 2px rgba(0,0,0,0.2);
                     flex-shrink: 0;
                     pointer-events: all;
                 `;
                 el.addEventListener('mouseenter', () => {
-                    el.style.boxShadow = '0 2px 8px rgba(0,0,0,0.3)';
-                    el.style.borderWidth = '2px';
+                    el.style.boxShadow = '0 2px 6px rgba(0,0,0,0.3)';
+                    el.style.borderWidth = '1.5px';
                 });
                 el.addEventListener('mouseleave', () => {
-                    el.style.boxShadow = '0 1px 3px rgba(0,0,0,0.2)';
-                    el.style.borderWidth = '1.5px';
+                    el.style.boxShadow = '0 1px 2px rgba(0,0,0,0.2)';
+                    el.style.borderWidth = '1px';
                 });
 
                 el.addEventListener('click', e => {
@@ -1436,7 +1509,7 @@ document.addEventListener('DOMContentLoaded', () => {
                     setTimeout(hidePOITooltip, 2000);
                 });
 
-                const marker = new maplibregl.Marker({ element: el, anchor: 'top' })
+                const marker = new maplibregl.Marker({ element: el, anchor: 'center' })
                     .setLngLat([lng, lat])
                     .addTo(map);
 
@@ -1500,6 +1573,11 @@ document.addEventListener('DOMContentLoaded', () => {
             });
         });
     });
+
+    } catch (e) {
+        console.error('Dashboard initialization failed:', e);
+        showMapLoadError();
+    }
 });
 // ══════════════════════════════════════════
 // EXPORT MAP FEATURE
@@ -1848,32 +1926,32 @@ function initEnvLayers() {
             label:      'Land Use (Urban Atlas 2021)',
             paint: {
                 'fill-color': ['match', ['get', 'class_2021'],
-                    'Forests',                                          '#86efac',
-                    'Green urban areas (Public access)',                '#4ade80',
-                    'Green urban areas (Private access)',               '#6ee7b7',
-                    'Green urban areas (Unknown access conditions)',    '#a7f3d0',
-                    'Herbaceous vegetation associations (natural grassland, moors...)', '#d9f99d',
-                    'Pastures',                                        '#fef08a',
-                    'Arable land (annual crops)',                      '#fde68a',
-                    'Continuous urban fabric (S.L. : > 80%)',          '#94a3b8',
-                    'Discontinuous dense urban fabric (S.L. : 50% -  80%)', '#b0bac4',
-                    'Discontinuous medium density urban fabric (S.L. : 30% - 50%)', '#cbd5e1',
-                    'Discontinuous low density urban fabric (S.L. : 10% - 30%)',     '#e2e8f0',
-                    'Discontinuous very low density urban fabric (S.L. : < 10%)',    '#f1f5f9',
-                    'Industrial, commercial, public, military and private units',     '#fcd34d',
-                    'Fast transit roads and associated land',          '#e2e8f0',
-                    'Other roads and associated land',                 '#e2e8f0',
-                    'Railways and associated land',                    '#cbd5e1',
-                    'Airports',                                        '#e0e7ef',
-                    'Construction sites',                              '#fca5a5',
-                    'Mineral extraction and dump sites',               '#fdba74',
-                    'Land without current use',                        '#e5e7eb',
-                    'Isolated structures',                             '#d1d5db',
-                    'Open spaces with little or no vegetation (beaches, dunes, bare rocks, glaciers)', '#f3f4f6',
-                    '#e5e7eb'
+                    'Forests',                                          '#14b8a6',
+                    'Green urban areas (Public access)',                '#2dd4bf',
+                    'Green urban areas (Private access)',               '#5eead4',
+                    'Green urban areas (Unknown access conditions)',    '#99f6e4',
+                    'Herbaceous vegetation associations (natural grassland, moors...)', '#67e8c9',
+                    'Pastures',                                        '#eab308',
+                    'Arable land (annual crops)',                      '#facc15',
+                    'Continuous urban fabric (S.L. : > 80%)',          '#ec4899',
+                    'Discontinuous dense urban fabric (S.L. : 50% -  80%)', '#f472b6',
+                    'Discontinuous medium density urban fabric (S.L. : 30% - 50%)', '#f9a8d4',
+                    'Discontinuous low density urban fabric (S.L. : 10% - 30%)',     '#fbcfe8',
+                    'Discontinuous very low density urban fabric (S.L. : < 10%)',    '#fce7f3',
+                    'Industrial, commercial, public, military and private units',     '#a855f7',
+                    'Fast transit roads and associated land',          '#94a3b8',
+                    'Other roads and associated land',                 '#94a3b8',
+                    'Railways and associated land',                    '#7d8ba1',
+                    'Airports',                                        '#a5b2c5',
+                    'Construction sites',                              '#fb7185',
+                    'Mineral extraction and dump sites',               '#f43f5e',
+                    'Land without current use',                        '#cbd5e1',
+                    'Isolated structures',                             '#c4b5fd',
+                    'Open spaces with little or no vegetation (beaches, dunes, bare rocks, glaciers)', '#e2e8f0',
+                    '#cbd5e1'
                 ],
-                'fill-opacity': 0.35,
-                'fill-outline-color': 'rgba(0,0,0,0.06)'
+                'fill-opacity': 0.55,
+                'fill-outline-color': 'rgba(0,0,0,0.12)'
             }
         },
         stl: {
@@ -1882,21 +1960,52 @@ function initEnvLayers() {
             type:       'fill',
             label:      'Street Trees (Copernicus 2021)',
             paint: {
-                'fill-color': '#22c55e',
-                'fill-opacity': 0.45,
-                'fill-outline-color': 'rgba(0,100,0,0.1)'
+                'fill-pattern': 'tree-pattern',
+                'fill-opacity': 0.75
             }
         }
     };
 
     let envOpacity = 0.35;
 
+    // ── Generate a small repeating tree-icon pattern for the Street Trees layer,
+    // instead of a flat green fill (much more intuitive at a glance) ──
+    function buildTreePatternImage() {
+        const size = 32;
+        const canvas = document.createElement('canvas');
+        canvas.width = size; canvas.height = size;
+        const ctx = canvas.getContext('2d');
+        // Canopy
+        ctx.fillStyle = '#5b7a4f';
+        ctx.beginPath();
+        ctx.arc(size/2, size/2 - 4, 7, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.fillStyle = '#748f63';
+        ctx.beginPath();
+        ctx.arc(size/2 - 3, size/2 - 7, 5, 0, Math.PI * 2);
+        ctx.fill();
+        // Trunk
+        ctx.fillStyle = '#78350f';
+        ctx.fillRect(size/2 - 1.5, size/2 + 2, 3, 6);
+        return ctx.getImageData(0, 0, size, size);
+    }
+    if (!map.hasImage('tree-pattern')) {
+        map.addImage('tree-pattern', buildTreePatternImage(), { pixelRatio: 2 });
+    }
+    map.on('style.load', () => {
+        if (!map.hasImage('tree-pattern')) {
+            map.addImage('tree-pattern', buildTreePatternImage(), { pixelRatio: 2 });
+        }
+    });
+
     function addEnvLayer(key) {
         const cfg      = ENV_LAYERS[key];
         const sourceId = 'env-' + key;
         const layerId  = 'env-layer-' + key;
+        const spinner  = document.getElementById('env-spinner-' + key);
 
-        if (!map.getSource(sourceId)) {
+        const sourceAlreadyExists = !!map.getSource(sourceId);
+        if (!sourceAlreadyExists) {
             map.addSource(sourceId, { type: 'vector', url: 'pmtiles://' + cfg.url });
         }
 
@@ -1912,6 +2021,20 @@ function initEnvLayers() {
             }, firstRoadLayer);
         } else {
             map.setLayoutProperty(layerId, 'visibility', 'visible');
+        }
+
+        // Show a spinner until this specific source's tiles have actually loaded —
+        // these files are large, so first load (cold CDN cache) can take a moment.
+        if (spinner && !sourceAlreadyExists) {
+            spinner.style.display = 'inline-block';
+            const checkLoaded = e => {
+                if (e.sourceId === sourceId && e.isSourceLoaded) {
+                    spinner.style.display = 'none';
+                    map.off('sourcedata', checkLoaded);
+                }
+            };
+            map.on('sourcedata', checkLoaded);
+            setTimeout(() => { spinner.style.display = 'none'; map.off('sourcedata', checkLoaded); }, 15000);
         }
     }
 
@@ -1945,6 +2068,7 @@ function initEnvLayers() {
             const key    = chip.dataset.env;
             const active = chip.dataset.active === 'true';
             const opRow  = document.getElementById('env-opacity-row');
+            const lcuLegend = document.getElementById('lcu-panel-legend');
 
             if (active) {
                 chip.dataset.active = 'false';
@@ -1958,8 +2082,44 @@ function initEnvLayers() {
                 addEnvLayer(key);
                 if (opRow) opRow.style.display = 'flex';
             }
+
+            if (key === 'lcu' && lcuLegend) {
+                lcuLegend.style.display = chip.dataset.active === 'true' ? 'flex' : 'none';
+            }
         });
     });
+
+    // Hover tooltip for Land Use / Street Trees — only when a road isn't already
+    // being hovered (road details take priority in the main tooltip/panel).
+    const envTooltip = document.getElementById('env-tooltip');
+    if (envTooltip) {
+        map.on('mousemove', e => {
+            const roadFeats = map.queryRenderedFeatures(e.point, { layers:['walkability-layer','bikeability-layer'] });
+            if (roadFeats.length) { envTooltip.style.display = 'none'; return; }
+
+            const activeEnvLayers = [...document.querySelectorAll('.env-chip[data-active="true"]')]
+                .map(c => 'env-layer-' + c.dataset.env)
+                .filter(id => map.getLayer(id));
+            if (!activeEnvLayers.length) { envTooltip.style.display = 'none'; return; }
+
+            const feats = map.queryRenderedFeatures(e.point, { layers: activeEnvLayers });
+            if (!feats.length) { envTooltip.style.display = 'none'; return; }
+
+            const f = feats[0];
+            let text;
+            if (f.layer.id === 'env-layer-lcu') {
+                text = f.properties.class_2021 || 'Land use';
+            } else {
+                text = 'Street trees';
+            }
+            const wrapperRect = document.querySelector('.map-wrapper').getBoundingClientRect();
+            envTooltip.textContent = text;
+            envTooltip.style.left = (e.originalEvent.clientX - wrapperRect.left) + 'px';
+            envTooltip.style.top  = (e.originalEvent.clientY - wrapperRect.top) + 'px';
+            envTooltip.style.display = 'block';
+        });
+        map.on('mouseleave', () => { envTooltip.style.display = 'none'; });
+    }
 
     // Opacity slider
     const slider = document.getElementById('env-opacity-slider');
