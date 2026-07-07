@@ -201,7 +201,7 @@ function showMapLoadError() {
     const reloadBtn= document.getElementById('map-loading-reload-btn');
     if (overlay) overlay.classList.remove('hidden');
     if (spinner) spinner.style.display = 'none';
-    if (text) text.textContent = 'Map failed to load — please check your connection.';
+    if (text) text.textContent = 'Map failed to load. Please check your connection.';
     if (reloadBtn) reloadBtn.style.display = 'inline-block';
 }
 
@@ -1584,10 +1584,6 @@ document.addEventListener('DOMContentLoaded', () => {
 // ══════════════════════════════════════════
 (function () {
 
-    // ── State ──────────────────────────────
-    let exportMode        = 'walkability'; // mirrors currentMode on open
-    let exportScoreFilter = 'all';         // 'all' | 'poor' | 'average' | 'moderate' | 'good' | 'excellent'
-
     const SCORE_RANGES = {
         all:      { min: 0.0, max: 1.0  },
         poor:     { min: 0.0, max: 0.2  },
@@ -1616,9 +1612,6 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // ── Open / close ───────────────────────
     function openPanel() {
-        // Sync mode to current dashboard mode
-        exportMode = currentMode;
-        updateModeUI();
         panel.classList.add('open');
     }
     function closePanel() { panel.classList.remove('open'); }
@@ -1633,44 +1626,6 @@ document.addEventListener('DOMContentLoaded', () => {
     });
     panel.addEventListener('click', e => e.stopPropagation());
 
-    // ── Mode pills ─────────────────────────
-    function updateModeUI() {
-        document.querySelectorAll('.export-mode-pill').forEach(p => {
-            p.classList.toggle('export-mode-active', p.dataset.exportMode === exportMode);
-        });
-    }
-    document.querySelectorAll('.export-mode-pill').forEach(p => {
-        p.addEventListener('click', () => { exportMode = p.dataset.exportMode; updateModeUI(); });
-    });
-
-    // ── Score chips — multi-select except "All" ─
-    document.querySelectorAll('.export-schip').forEach(chip => {
-        chip.addEventListener('click', () => {
-            const score = chip.dataset.score;
-            if (score === 'all') {
-                document.querySelectorAll('.export-schip').forEach(c => c.classList.remove('export-schip-on'));
-                chip.classList.add('export-schip-on');
-                exportScoreFilter = 'all';
-            } else {
-                const allChip = document.querySelector('.export-schip-all');
-                allChip.classList.remove('export-schip-on');
-                chip.classList.toggle('export-schip-on');
-                // If nothing selected, fall back to all
-                const anyOn = [...document.querySelectorAll('.export-schip:not(.export-schip-all)')].some(c => c.classList.contains('export-schip-on'));
-                if (!anyOn) { allChip.classList.add('export-schip-on'); exportScoreFilter = 'all'; }
-                else exportScoreFilter = score; // last toggled (used for single-tier exports)
-            }
-        });
-    });
-
-    // Helper: get currently selected score tiers
-    function getSelectedTiers() {
-        const allOn = document.querySelector('.export-schip-all.export-schip-on');
-        if (allOn) return ['poor','average','moderate','good','excellent'];
-        return [...document.querySelectorAll('.export-schip:not(.export-schip-all).export-schip-on')]
-            .map(c => c.dataset.score);
-    }
-
     // ── Format buttons ─────────────────────
     btnPdf.addEventListener('click', () => doExport('pdf'));
     btnPng.addEventListener('click', () => doExport('png'));
@@ -1679,39 +1634,18 @@ document.addEventListener('DOMContentLoaded', () => {
     // CORE EXPORT FUNCTION
     // ══════════════════════════════════════
     async function doExport(format) {
-        const tiers   = getSelectedTiers();
-        const isWalk  = exportMode === 'walkability';
+        // Export always mirrors exactly what's currently shown on the live map —
+        // no separate mode or road-filter choice in the export panel.
+        const isWalk   = currentMode === 'walkability';
         const mapTitle = isWalk ? 'Child Walkability — Salzburg' : 'Child Bikeability — Salzburg';
-        const propKey  = isWalk ? 'index_walk_ft' : 'index_bike_ft';
+        const tiers    = ['poor','average','moderate','good','excellent'];
 
-        // 1. Apply temporary filter on the live map
-        const layerId = isWalk ? 'walkability-layer' : 'bikeability-layer';
-        const origFilter = map.getFilter(layerId);
-
-        let tempFilter = null;
-        if (tiers.length < 5) {
-            const tierConditions = tiers.map(tier => {
-                const r = SCORE_RANGES[tier];
-                return ['all', ['>=', ['get', propKey], r.min], ['<', ['get', propKey], r.max]];
-            });
-            tempFilter = tierConditions.length === 1
-                ? tierConditions[0]
-                : ['any', ...tierConditions];
-            map.setFilter(layerId, tempFilter);
-        }
-
-        // 2. Wait one frame for map to re-render
-        await new Promise(r => setTimeout(r, 120));
-
-        // 3. Grab the map canvas
+        // 1. Grab the map canvas as-is (whatever filters are already live on the map)
         const mapCanvas = map.getCanvas();
         const W = mapCanvas.width;
         const H = mapCanvas.height;
 
-        // Restore original filter immediately
-        if (tempFilter) map.setFilter(layerId, origFilter);
-
-        // 4. Build the output canvas with map elements
+        // 2. Build the output canvas with map elements
         const canvas  = document.createElement('canvas');
         const HEADER  = 72;   // px — dark blue header bar
         const FOOTER  = 48;   // px — attribution footer
@@ -1729,16 +1663,21 @@ document.addEventListener('DOMContentLoaded', () => {
 
         // Draw logo — load from img tag already in DOM
         const logoImg = document.querySelector('.header-logo, img[alt="NetAScore4Kids Logo"], img[src*="logo"]');
-        const LOGO_SIZE = 44;
-        const LOGO_X    = 18;
-        const LOGO_Y    = (HEADER - LOGO_SIZE) / 2;
-        const TEXT_X    = LOGO_X + LOGO_SIZE + 12;
+        const LOGO_MAX_H = 44;
+        const LOGO_X     = 18;
 
+        // Preserve the logo's natural aspect ratio instead of forcing a square,
+        // otherwise non-square logos get squashed/compacted in the export.
+        let logoDrawW = LOGO_MAX_H;
         if (logoImg && logoImg.complete && logoImg.naturalWidth > 0) {
+            const aspect = logoImg.naturalWidth / logoImg.naturalHeight;
+            logoDrawW = LOGO_MAX_H * aspect;
+            const LOGO_Y = (HEADER - LOGO_MAX_H) / 2;
             try {
-                ctx.drawImage(logoImg, LOGO_X, LOGO_Y, LOGO_SIZE, LOGO_SIZE);
+                ctx.drawImage(logoImg, LOGO_X, LOGO_Y, logoDrawW, LOGO_MAX_H);
             } catch(e) { /* cross-origin fallback — skip logo */ }
         }
+        const TEXT_X = LOGO_X + logoDrawW + 12;
 
         // Main title — NetAScore4Teens
         ctx.fillStyle = '#ffffff';
@@ -1962,6 +1901,15 @@ function initEnvLayers() {
             paint: {
                 'fill-pattern': 'tree-pattern',
                 'fill-opacity': 0.75
+            },
+            // At low zoom, thousands of tiny tree-footprint polygons each get
+            // stamped with the full-size icon tile, producing a noisy/moiré mess.
+            // Show a flat, smooth green fill until zoomed in enough to make out
+            // individual canopies, then switch to the icon pattern.
+            patternMinZoom: 15,
+            lowZoomPaint: {
+                'fill-color':   '#5b7a4f',
+                'fill-opacity': 0.55
             }
         }
     };
@@ -1970,23 +1918,28 @@ function initEnvLayers() {
 
     // ── Generate a small repeating tree-icon pattern for the Street Trees layer,
     // instead of a flat green fill (much more intuitive at a glance) ──
+    // The tile is deliberately larger than the tree icon itself — that empty
+    // buffer around each tree is what creates believable spacing once the
+    // pattern repeats. A tight tile (icon nearly filling the tile) reads as a
+    // solid, artificial-looking grid instead of scattered street trees.
     function buildTreePatternImage() {
-        const size = 32;
+        const size = 64;       // tile size — bigger tile = more space between trees
+        const cx = size / 2, cy = size / 2;
         const canvas = document.createElement('canvas');
         canvas.width = size; canvas.height = size;
         const ctx = canvas.getContext('2d');
         // Canopy
         ctx.fillStyle = '#5b7a4f';
         ctx.beginPath();
-        ctx.arc(size/2, size/2 - 4, 7, 0, Math.PI * 2);
+        ctx.arc(cx, cy - 4, 7, 0, Math.PI * 2);
         ctx.fill();
         ctx.fillStyle = '#748f63';
         ctx.beginPath();
-        ctx.arc(size/2 - 3, size/2 - 7, 5, 0, Math.PI * 2);
+        ctx.arc(cx - 3, cy - 7, 5, 0, Math.PI * 2);
         ctx.fill();
         // Trunk
         ctx.fillStyle = '#78350f';
-        ctx.fillRect(size/2 - 1.5, size/2 + 2, 3, 6);
+        ctx.fillRect(cx - 1.5, cy + 2, 3, 6);
         return ctx.getImageData(0, 0, size, size);
     }
     if (!map.hasImage('tree-pattern')) {
@@ -2012,15 +1965,34 @@ function initEnvLayers() {
         if (!map.getLayer(layerId)) {
             // Insert below road layers so roads stay on top
             const firstRoadLayer = map.getLayer('walkability-layer') ? 'walkability-layer' : undefined;
+
+            // Layers with a lowZoomPaint (e.g. street trees) get a flat fill for
+            // zoomed-out views, then hand off to the detailed pattern fill once
+            // zoomed in past patternMinZoom.
+            if (cfg.lowZoomPaint) {
+                map.addLayer({
+                    id:     layerId + '-lowzoom',
+                    type:   cfg.type,
+                    source: sourceId,
+                    'source-layer': cfg.sourceLayer,
+                    maxzoom: cfg.patternMinZoom,
+                    paint:  cfg.lowZoomPaint
+                }, firstRoadLayer);
+            }
+
             map.addLayer({
                 id:     layerId,
                 type:   cfg.type,
                 source: sourceId,
                 'source-layer': cfg.sourceLayer,
+                minzoom: cfg.lowZoomPaint ? cfg.patternMinZoom : 0,
                 paint:  cfg.paint
             }, firstRoadLayer);
         } else {
             map.setLayoutProperty(layerId, 'visibility', 'visible');
+            if (map.getLayer(layerId + '-lowzoom')) {
+                map.setLayoutProperty(layerId + '-lowzoom', 'visibility', 'visible');
+            }
         }
 
         // Show a spinner until this specific source's tiles have actually loaded —
@@ -2043,6 +2015,9 @@ function initEnvLayers() {
         if (map.getLayer(layerId)) {
             map.setLayoutProperty(layerId, 'visibility', 'none');
         }
+        if (map.getLayer(layerId + '-lowzoom')) {
+            map.setLayoutProperty(layerId + '-lowzoom', 'visibility', 'none');
+        }
     }
 
     function updateEnvOpacity(opacity) {
@@ -2051,6 +2026,9 @@ function initEnvLayers() {
             const layerId = 'env-layer-' + key;
             if (map.getLayer(layerId)) {
                 map.setPaintProperty(layerId, 'fill-opacity', envOpacity);
+            }
+            if (map.getLayer(layerId + '-lowzoom')) {
+                map.setPaintProperty(layerId + '-lowzoom', 'fill-opacity', envOpacity);
             }
         });
     }
@@ -2069,6 +2047,7 @@ function initEnvLayers() {
             const active = chip.dataset.active === 'true';
             const opRow  = document.getElementById('env-opacity-row');
             const lcuLegend = document.getElementById('lcu-panel-legend');
+            const stlLegend = document.getElementById('stl-panel-legend');
 
             if (active) {
                 chip.dataset.active = 'false';
@@ -2085,6 +2064,9 @@ function initEnvLayers() {
 
             if (key === 'lcu' && lcuLegend) {
                 lcuLegend.style.display = chip.dataset.active === 'true' ? 'flex' : 'none';
+            }
+            if (key === 'stl' && stlLegend) {
+                stlLegend.style.display = chip.dataset.active === 'true' ? 'flex' : 'none';
             }
         });
     });
