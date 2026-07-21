@@ -1916,30 +1916,46 @@ function initEnvLayers() {
 
     let envOpacity = 0.35;
 
-    // ── Generate a small repeating tree-icon pattern for the Street Trees layer,
+    // ── Generate a repeating tree-icon pattern for the Street Trees layer,
     // instead of a flat green fill (much more intuitive at a glance) ──
-    // The tile is deliberately larger than the tree icon itself — that empty
-    // buffer around each tree is what creates believable spacing once the
-    // pattern repeats. A tight tile (icon nearly filling the tile) reads as a
-    // solid, artificial-looking grid instead of scattered street trees.
+    // NOTE: fill-pattern always tiles edge-to-edge, so it can never be
+    // perfectly non-repeating — that's a hard limitation of the technique.
+    // What we CAN do is make the repeating unit itself look irregular: instead
+    // of one tree stamped in a perfect grid, each tile holds a small cluster
+    // of trees at varied positions/sizes. The eye reads "scattered trees"
+    // instead of "checkerboard" because the repeat is much harder to spot.
     function buildTreePatternImage() {
-        const size = 64;       // tile size — bigger tile = more space between trees
-        const cx = size / 2, cy = size / 2;
+        const size = 110; // bigger tile → each repeat holds a whole cluster
         const canvas = document.createElement('canvas');
         canvas.width = size; canvas.height = size;
         const ctx = canvas.getContext('2d');
-        // Canopy
-        ctx.fillStyle = '#5b7a4f';
-        ctx.beginPath();
-        ctx.arc(cx, cy - 4, 7, 0, Math.PI * 2);
-        ctx.fill();
-        ctx.fillStyle = '#748f63';
-        ctx.beginPath();
-        ctx.arc(cx - 3, cy - 7, 5, 0, Math.PI * 2);
-        ctx.fill();
-        // Trunk
-        ctx.fillStyle = '#78350f';
-        ctx.fillRect(cx - 1.5, cy + 2, 3, 6);
+
+        // Fixed "random-looking" tree placements — kept well inset from the
+        // tile edges so nothing gets clipped or creates a visible seam.
+        const trees = [
+            { x: 20, y: 26, r: 8  },
+            { x: 68, y: 18, r: 6.5},
+            { x: 90, y: 55, r: 7.5},
+            { x: 42, y: 62, r: 9  },
+            { x: 18, y: 88, r: 6  },
+            { x: 78, y: 92, r: 8  },
+        ];
+
+        trees.forEach(t => {
+            // Canopy (two-tone for depth)
+            ctx.fillStyle = '#5b7a4f';
+            ctx.beginPath();
+            ctx.arc(t.x, t.y - t.r * 0.5, t.r, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.fillStyle = '#748f63';
+            ctx.beginPath();
+            ctx.arc(t.x - t.r * 0.4, t.y - t.r * 0.9, t.r * 0.7, 0, Math.PI * 2);
+            ctx.fill();
+            // Trunk
+            ctx.fillStyle = '#78350f';
+            ctx.fillRect(t.x - 1.5, t.y + t.r * 0.25, 3, t.r * 0.75);
+        });
+
         return ctx.getImageData(0, 0, size, size);
     }
     if (!map.hasImage('tree-pattern')) {
