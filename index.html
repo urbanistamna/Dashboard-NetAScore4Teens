@@ -713,7 +713,20 @@
                         <i class="ti ti-moon" id="dark-toggle-icon"></i>
                     </div>
                 </div>
-                <p class="lp-intro-quote">Teens don't experience cities the same way adults do. A few minutes' walk or bike ride can feel unsafe, exciting, frustrating, or inspiring. Explore Salzburg through their lens.</p>
+                <p class="lp-intro-quote">Teens don't experience cities the same way adults do. A few minutes' walk or bike ride can feel unsafe, exciting, frustrating, or inspiring. Explore cities through their lens.</p>
+            </div>
+
+            <div class="panel-section sec-city">
+                <h3><i class="ti ti-map-pin"></i> Choose a city</h3>
+                <div class="mode-btns">
+                    <div class="mode-btn active-city" data-city="salzburg">
+                        <i class="ti ti-map-2"></i><span>Salzburg</span>
+                    </div>
+                    <div class="mode-btn" data-city="olomouc">
+                        <i class="ti ti-map-2"></i><span>Olomouc</span>
+                    </div>
+                </div>
+                <p class="city-note" id="city-note" style="display:none;">Environmental Layers (Land Use, Street Trees) are currently available for Salzburg only.</p>
             </div>
 
             <div class="panel-section sec-explore">
@@ -802,13 +815,18 @@
                     <div class="env-legend-row"><div class="env-legend-swatch" style="background:#fb7185"></div><span>Construction / extraction</span></div>
                     <div class="env-legend-row"><div class="env-legend-swatch" style="background:#e2e8f0"></div><span>Other / unused land</span></div>
                 </div>
-                <div class="env-legend" id="stl-panel-legend" style="display:none;">
-                    <div class="env-legend-row"><div class="env-legend-swatch" style="background:#5b7a4f"></div><span>Street tree canopy (Copernicus 2021)</span></div>
-                </div>
                 <div class="env-opacity-row" id="env-opacity-row" style="display:none;">
                     <label class="env-opacity-label"><i class="ti ti-adjustments"></i> Opacity</label>
                     <input type="range" class="env-opacity-slider" id="env-opacity-slider" min="10" max="80" value="35">
                     <span class="env-opacity-value" id="env-opacity-value">35%</span>
+                </div>
+                <div class="env-legend" id="stl-panel-legend" style="display:none;">
+                    <div class="env-legend-row"><div class="env-legend-swatch" style="background:#5b7a4f"></div><span>Street tree canopy (Copernicus 2021)</span></div>
+                </div>
+                <div class="env-opacity-row" id="env-opacity-row-stl" style="display:none;">
+                    <label class="env-opacity-label"><i class="ti ti-adjustments"></i> Opacity</label>
+                    <input type="range" class="env-opacity-slider" id="env-opacity-slider-stl" min="10" max="100" value="75">
+                    <span class="env-opacity-value" id="env-opacity-value-stl">75%</span>
                 </div>
             </div>
 
@@ -832,7 +850,7 @@
         <div class="map-top-left-row">
             <div class="map-location-badge" id="map-location-badge">
                 <i class="ti ti-map-pin"></i>
-                <span>Salzburg, Austria</span>
+                <span id="map-location-text">Salzburg, Austria</span>
             </div>
             <div class="map-curious-btn" id="map-curious-btn" title="City insights">
                 <svg viewBox="0 0 24 24" width="16" height="16" fill="none" xmlns="http://www.w3.org/2000/svg">
@@ -874,7 +892,7 @@
                 <div class="ml-body" id="ml-body" style="display:none">
                     <div class="ml-row"><div class="ml-swatch" style="background:#E24B4A"></div><span>Poor (0.0–0.20)</span></div>
                     <div class="ml-row"><div class="ml-swatch" style="background:#EF9F27"></div><span>Average (0.21–0.40)</span></div>
-                    <div class="ml-row"><div class="ml-swatch" style="background:#FAC775"></div><span>Moderate (0.41–0.60)</span></div>
+                    <div class="ml-row"><div class="ml-swatch" style="background:#F5C518"></div><span>Moderate (0.41–0.60)</span></div>
                     <div class="ml-row"><div class="ml-swatch" style="background:#97C459"></div><span>Good (0.61–0.80)</span></div>
                     <div class="ml-row"><div class="ml-swatch" style="background:#378ADD"></div><span>Excellent (0.81–1.0)</span></div>
                 </div>
@@ -936,7 +954,7 @@
             <div class="fs-hud-legend">
                 <div class="fs-hud-legend-row"><div class="fs-hud-swatch" style="background:#E24B4A"></div><span>Poor</span></div>
                 <div class="fs-hud-legend-row"><div class="fs-hud-swatch" style="background:#EF9F27"></div><span>Average</span></div>
-                <div class="fs-hud-legend-row"><div class="fs-hud-swatch" style="background:#FAC775"></div><span>Moderate</span></div>
+                <div class="fs-hud-legend-row"><div class="fs-hud-swatch" style="background:#F5C518"></div><span>Moderate</span></div>
                 <div class="fs-hud-legend-row"><div class="fs-hud-swatch" style="background:#97C459"></div><span>Good</span></div>
                 <div class="fs-hud-legend-row"><div class="fs-hud-swatch" style="background:#378ADD"></div><span>Excellent</span></div>
             </div>
