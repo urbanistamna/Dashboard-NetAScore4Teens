@@ -75,6 +75,22 @@ body.dark-mode .panel-section.sec-city    h3 { background:rgba(91,33,182,0.18); 
 .mode-btn.active-bike i, .mode-btn.active-bike span { color:#0C447C; }
 .mode-btn.active-city { background:#EDE9FE; border-color:#8B5CF6; }
 .mode-btn.active-city i, .mode-btn.active-city span { color:#5B21B6; }
+
+/* City selector — distinct pill/tab shape + resting tint, so it reads as a
+   different kind of control from the Walking/Biking cards, not just another
+   pair of identical buttons with a different accent color when active. */
+.mode-btn[data-city] {
+    border-radius: 999px;
+    background: rgba(139,92,246,0.055);
+    border-color: rgba(139,92,246,0.22);
+}
+.mode-btn[data-city] i, .mode-btn[data-city] span { color: #7c5cd6; }
+.mode-btn[data-city]:hover { background: rgba(139,92,246,0.1); }
+body.dark-mode .mode-btn[data-city] {
+    background: rgba(139,92,246,0.08);
+    border-color: rgba(139,92,246,0.25);
+}
+body.dark-mode .mode-btn[data-city] i, body.dark-mode .mode-btn[data-city] span { color: #b9a6f5; }
 .city-note { font-size:10.5px; line-height:1.4; color:var(--text-muted); margin:6px 2px 0; }
 
 /* FACE CHIPS */
