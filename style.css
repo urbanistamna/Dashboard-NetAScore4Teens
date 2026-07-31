@@ -27,14 +27,14 @@ body { margin:0; font-family:"Nunito",sans-serif; background:linear-gradient(135
 
 /* HEADER */
 .header-window { position:absolute; top:20px; left:20px; width:280px; z-index:20; background:var(--panel); backdrop-filter:blur(18px); -webkit-backdrop-filter:blur(18px); border:1px solid var(--border); border-radius:var(--radius); box-shadow:var(--shadow); }
-.header-content { display:flex; align-items:center; gap:6px; padding:14px 18px; }
+.header-content { display:flex; align-items:center; gap:12px; padding:14px 18px; }
 .header-logo { height:38px; width:auto; flex-shrink:0; }
 .header-title { font-size:15px; font-weight:700; color:var(--text); line-height:1.2; }
 .header-sub { font-size:11px; color:var(--text-muted); margin-top:2px; }
 
 /* LEFT PANEL */
 .dashboard-bg { position:absolute; top:96px; left:20px; width:280px; bottom:20px; z-index:15; background:var(--panel); backdrop-filter:blur(18px); -webkit-backdrop-filter:blur(18px); border:1px solid var(--border); border-radius:var(--radius); box-shadow:var(--shadow); }
-.panel-content { height:100%; overflow-y:auto; overflow-x:hidden; padding:14px 14px; }
+.panel-content { height:100%; overflow-y:auto; padding:14px 14px; }
 .panel-content::-webkit-scrollbar { width:4px; }
 .panel-content::-webkit-scrollbar-thumb { background:rgba(0,0,0,0.08); border-radius:999px; }
 .panel-section { margin-bottom:16px; }
@@ -75,22 +75,6 @@ body.dark-mode .panel-section.sec-city    h3 { background:rgba(91,33,182,0.18); 
 .mode-btn.active-bike i, .mode-btn.active-bike span { color:#0C447C; }
 .mode-btn.active-city { background:#EDE9FE; border-color:#8B5CF6; }
 .mode-btn.active-city i, .mode-btn.active-city span { color:#5B21B6; }
-
-/* City selector — distinct pill/tab shape + resting tint, so it reads as a
-   different kind of control from the Walking/Biking cards, not just another
-   pair of identical buttons with a different accent color when active. */
-.mode-btn[data-city] {
-    border-radius: 999px;
-    background: rgba(139,92,246,0.055);
-    border-color: rgba(139,92,246,0.22);
-}
-.mode-btn[data-city] i, .mode-btn[data-city] span { color: #7c5cd6; }
-.mode-btn[data-city]:hover { background: rgba(139,92,246,0.1); }
-body.dark-mode .mode-btn[data-city] {
-    background: rgba(139,92,246,0.08);
-    border-color: rgba(139,92,246,0.25);
-}
-body.dark-mode .mode-btn[data-city] i, body.dark-mode .mode-btn[data-city] span { color: #b9a6f5; }
 .city-note { font-size:10.5px; line-height:1.4; color:var(--text-muted); margin:6px 2px 0; }
 
 /* FACE CHIPS */
@@ -1987,126 +1971,33 @@ body.dark-mode .map-legend { background: rgba(28,32,40,0.95); border-color: rgba
 body.dark-mode .ml-header { border-top-color: rgba(255,255,255,0.07); }
 body.dark-mode .ml-body { border-bottom-color: rgba(255,255,255,0.07); }
 
-/* Location search box — top left of map, OSM-style search */
-.map-search-wrap {
-    position: relative;
+/* Location badge — top left of map */
+.map-location-badge {
     display: flex;
     align-items: center;
     gap: 6px;
-    background: rgba(255,252,248,0.96);
+    background: rgba(255,252,248,0.95);
     backdrop-filter: blur(14px);
     -webkit-backdrop-filter: blur(14px);
     border: 1px solid rgba(120,110,95,0.15);
     border-radius: 99px;
-    padding: 7px 10px 7px 12px;
+    padding: 5px 12px 5px 9px;
     box-shadow: 0 4px 16px rgba(15,23,42,0.10);
-    width: 190px;
-    max-width: 55vw;
-    transition: width 0.2s ease, box-shadow 0.2s ease;
-}
-.map-search-wrap.focused {
-    width: 260px;
-    max-width: 72vw;
-    box-shadow: 0 6px 22px rgba(15,23,42,0.16);
-}
-.map-search-icon { font-size: 13px; color: #E24B4A; flex-shrink: 0; }
-.map-search-input {
-    border: none;
-    outline: none;
-    background: transparent;
     font-family: "Nunito", sans-serif;
     font-size: 12px;
-    font-weight: 600;
+    font-weight: 700;
     color: #374151;
-    flex: 1;
-    min-width: 0;
-    padding: 0;
+    letter-spacing: 0.01em;
+    pointer-events: none;
 }
-.map-search-input::placeholder { color: #9ca3af; font-weight: 600; }
-body.dark-mode .map-search-input { color: #e5e7eb; }
-.map-search-clear {
-    flex-shrink: 0;
-    width: 18px; height: 18px;
-    border: none;
-    border-radius: 50%;
-    background: rgba(0,0,0,0.07);
-    color: #6b7280;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    cursor: pointer;
-    font-size: 9px;
-    padding: 0;
+.map-location-badge i {
+    font-size: 14px;
+    color: #E24B4A;
 }
-.map-search-clear:hover { background: rgba(0,0,0,0.12); }
-body.dark-mode .map-search-wrap {
-    background: rgba(28,32,40,0.96);
+body.dark-mode .map-location-badge {
+    background: rgba(28,32,40,0.95);
     border-color: rgba(255,255,255,0.1);
-}
-body.dark-mode .map-search-clear { background: rgba(255,255,255,0.08); color: #9ca3af; }
-body.dark-mode .map-search-clear:hover { background: rgba(255,255,255,0.14); }
-
-.map-search-results {
-    position: absolute;
-    top: calc(100% + 8px);
-    left: 0;
-    min-width: 100%;
-    width: max-content;
-    max-width: min(340px, 82vw);
-    max-height: 260px;
-    overflow-y: auto;
-    background: rgba(255,252,248,0.98);
-    backdrop-filter: blur(14px);
-    -webkit-backdrop-filter: blur(14px);
-    border: 1px solid rgba(120,110,95,0.15);
-    border-radius: 13px;
-    box-shadow: 0 10px 28px rgba(15,23,42,0.16);
-    z-index: 30;
-}
-body.dark-mode .map-search-results {
-    background: rgba(28,32,40,0.98);
-    border-color: rgba(255,255,255,0.1);
-}
-.map-search-result-item {
-    display: flex;
-    align-items: flex-start;
-    gap: 8px;
-    padding: 9px 12px;
-    font-size: 12px;
-    color: #374151;
-    cursor: pointer;
-    border-bottom: 1px solid rgba(120,110,95,0.08);
-    line-height: 1.4;
-}
-.map-search-result-item:last-child { border-bottom: none; }
-.map-search-result-item:hover, .map-search-result-item.active-hover {
-    background: rgba(37,99,235,0.06);
-}
-.map-search-result-item i { font-size: 14px; color: #E24B4A; flex-shrink: 0; margin-top: 1px; }
-.map-search-result-main { font-weight: 700; color: #1f2937; }
-.map-search-result-sub { font-size: 10.5px; color: #6b7280; margin-top: 1px; }
-body.dark-mode .map-search-result-item { color: #e5e7eb; border-bottom-color: rgba(255,255,255,0.07); }
-body.dark-mode .map-search-result-item:hover { background: rgba(255,255,255,0.06); }
-body.dark-mode .map-search-result-main { color: #f3f4f6; }
-body.dark-mode .map-search-result-sub { color: #9ca3af; }
-
-.map-search-result-empty, .map-search-result-loading {
-    padding: 12px;
-    font-size: 11.5px;
-    color: #6b7280;
-    text-align: center;
-}
-body.dark-mode .map-search-result-empty, body.dark-mode .map-search-result-loading { color: #9ca3af; }
-
-/* Marker dropped on the map for a selected search result */
-.map-search-marker {
-    width: 26px;
-    height: 26px;
-    background: #E24B4A;
-    border: 3px solid #fff;
-    border-radius: 50% 50% 50% 0;
-    transform: rotate(-45deg);
-    box-shadow: 0 3px 10px rgba(0,0,0,0.3);
+    color: #e5e7eb;
 }
 
 
@@ -2374,11 +2265,9 @@ body.dark-mode .poi-loading {
 .env-opacity-row {
     display: flex;
     align-items: center;
-    gap: 6px;
+    gap: 8px;
     padding: 4px 0;
     margin-top: 2px;
-    width: 100%;
-    max-width: 100%;
 }
 .env-opacity-label {
     font-size: 10px;
@@ -2387,16 +2276,11 @@ body.dark-mode .poi-loading {
     white-space: nowrap;
     display: flex;
     align-items: center;
-    gap: 3px;
-    flex-shrink: 0;
-    overflow: hidden;
-    text-overflow: ellipsis;
+    gap: 4px;
 }
 .env-opacity-label i { font-size: 12px; }
 .env-opacity-slider {
     flex: 1;
-    min-width: 0;
-    max-width: 100%;
     height: 4px;
     accent-color: #4ade80;
     cursor: pointer;
@@ -2405,8 +2289,7 @@ body.dark-mode .poi-loading {
     font-size: 10px;
     font-weight: 600;
     color: var(--text-muted, #6b7280);
-    min-width: 26px;
-    flex-shrink: 0;
+    min-width: 28px;
     text-align: right;
 }
 
@@ -2493,435 +2376,3 @@ body.dark-mode .env-legend-row { color: #cbd5e1; }
     box-shadow: 0 4px 14px rgba(0,0,0,0.2);
     transform: translate(-50%, calc(-100% - 10px));
 }
-
-/* ══════════════════════════════════════════════════════════════
-   MOBILE LAYOUT — minimal layout for small screens
-   Header      → two rows: brand, then city/mode quick-picks ("layers on top")
-   Filters     → collapsed to a small toggle button; expands into a
-                 left-anchored flyout drawer (Score filter / POI / Env layers)
-   Detail panel → expandable bottom sheet (peek / expanded), unchanged
-   Legend       → already lives inside the map (bottom-right); Export removed
-   ══════════════════════════════════════════════════════════════ */
-@media (max-width: 768px) {
-
-    /* Map fills the whole screen; everything else floats above it */
-    #map-container { height: 100vh; }
-    .map-wrapper {
-        position: fixed;
-        top: 0; left: 0; right: 0; bottom: 0;
-        border-radius: 0;
-    }
-
-    /* ── HEADER — brand row + city/mode quick-pick row, one card ── */
-    .header-window {
-        position: fixed;
-        top: 0; left: 0; right: 0;
-        width: auto;
-        z-index: 45;
-        border-radius: 0 0 16px 16px;
-        box-shadow: 0 4px 18px rgba(15,23,42,0.10);
-        display: block;
-    }
-    .header-content { padding: 8px 14px 6px; gap: 8px; }
-    .header-logo { height: 26px; }
-    .header-title { font-size: 13px; }
-    .header-sub { font-size: 9.5px; margin-top: 0; }
-
-    .map-mobile-controls {
-        display: flex;
-        gap: 4px;
-        flex-wrap: wrap;
-        padding: 0 12px 7px;
-    }
-    .mmc-group {
-        display: flex;
-        gap: 2px;
-        background: rgba(0,0,0,0.035);
-        border-radius: 99px;
-        padding: 2px;
-    }
-    body.dark-mode .mmc-group { background: rgba(255,255,255,0.06); }
-    .mmc-chip {
-        display: flex;
-        align-items: center;
-        gap: 3px;
-        border: none;
-        border-radius: 99px;
-        padding: 4px 8px;
-        font-family: "Nunito", sans-serif;
-        font-size: 9.5px;
-        font-weight: 700;
-        color: var(--text-muted);
-        background: transparent;
-        cursor: pointer;
-        white-space: nowrap;
-        transition: var(--transition);
-    }
-    .mmc-chip i { font-size: 10px; }
-    .mmc-chip.active { background: #EDE9FE; color: #5B21B6; }
-    #mmc-mode-group .mmc-chip.active { background: #EAF3DE; color: #3B6D11; }
-
-    /* ── ALWAYS-VISIBLE MOOD/SCORE FILTER — the main mobile focus ── */
-    .mobile-mood-slot {
-        padding: 2px 12px 10px;
-    }
-    .mobile-mood-slot .panel-section { margin-bottom: 0; }
-    .mobile-mood-slot .panel-section h3 { margin-bottom: 5px; }
-    .mobile-mood-slot .quality-faces { margin-bottom: 6px; }
-    .mobile-mood-slot .quality-labels { margin-bottom: 4px; }
-
-    /* Header is now ~2 rows tall — everything anchored to "below header"
-       needs to clear it. Approximate header height ≈ 96px. */
-    .map-top-left-row { top: 194px; left: 10px; }
-    .map-fact-card { top: 234px; left: 10px; width: 200px; max-width: calc(100vw - 20px); }
-
-    /* Hover-only hint makes no sense on touch */
-    .map-hint { display: none; }
-
-    /* Bottom-right control stack — legend only now (export removed below);
-       still needs clearance for the detail sheet's peek strip when open. */
-    .map-br-stack { bottom: 78px; right: 10px; }
-    .map-plain-attrib { bottom: 80px; right: 10px; font-size: 8px; }
-    .map-export-btn { display: none; }
-
-    /* Full desktop credits footer is too cluttered for a phone —
-       a compact credit line lives inside the filters drawer instead. */
-    .credits-footer { display: none; }
-    .mobile-credit-line {
-        display: block;
-        font-size: 9.5px;
-        color: var(--text-muted);
-        text-align: center;
-        padding: 10px 4px 4px;
-        border-top: 1px solid var(--border);
-        margin-top: 10px;
-    }
-
-    /* ── FILTERS TOGGLE BUTTON — always-visible entry point, left side ── */
-    .filters-toggle-btn {
-        position: fixed;
-        top: 194px;
-        left: 10px;
-        width: 42px;
-        height: 42px;
-        border-radius: 50%;
-        border: 1px solid rgba(120,110,95,0.15);
-        background: rgba(255,252,248,0.94);
-        backdrop-filter: blur(14px);
-        -webkit-backdrop-filter: blur(14px);
-        box-shadow: 0 4px 14px rgba(15,23,42,0.12);
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        font-size: 18px;
-        color: var(--text);
-        cursor: pointer;
-        z-index: 52;
-        transition: var(--transition);
-    }
-    .filters-toggle-btn.active { background: #EDE9FE; color: #5B21B6; border-color: #C4B5FD; }
-    body.dark-mode .filters-toggle-btn { background: rgba(28,32,40,0.94); border-color: rgba(255,255,255,0.1); }
-
-    /* TEMPORARY DIAGNOSTIC — remove once the stale-cache question is settled.
-       If you don't see this badge on your phone/emulator, you are testing an
-       old cached copy, not the file you think you're testing. */
-    .mobile-build-badge {
-        display: block;
-        position: fixed;
-        bottom: 4px;
-        left: 4px;
-        z-index: 999;
-        font-family: monospace;
-        font-size: 10px;
-        font-weight: 700;
-        color: #fff;
-        background: #dc2626;
-        padding: 2px 6px;
-        border-radius: 4px;
-        pointer-events: none;
-    }
-
-    /* Nudge the location badge/curious row down and to the right of the
-       toggle button so the two don't collide at the left edge. */
-    .map-top-left-row { left: 62px; }
-    .map-fact-card { left: 62px; max-width: calc(100vw - 74px); }
-
-    /* ── FILTERS DRAWER (.dashboard-bg) — flyout anchored left, not a
-       full-width bottom sheet: keeps most of the map visible at all times ── */
-    .dashboard-bg {
-        position: fixed;
-        top: 194px;
-        left: 10px;
-        right: auto;
-        bottom: auto;
-        width: min(78vw, 290px);
-        /* A definite height (not auto) is required for flex:1 on
-           .panel-content below to actually do anything — auto-height
-           flex containers have no extra space to distribute, which was
-           silently collapsing the whole content area to ~0px. */
-        height: min(58vh, calc(100vh - 236px));
-        border-radius: 18px;
-        z-index: 51;
-        display: flex;
-        flex-direction: column;
-        overflow: hidden;
-        transform-origin: top left;
-        transform: scale(0.92);
-        opacity: 0;
-        pointer-events: none;
-        transition: transform 0.2s ease, opacity 0.2s ease;
-    }
-    .dashboard-bg.sheet-expanded {
-        transform: scale(1);
-        opacity: 1;
-        pointer-events: auto;
-    }
-    .dashboard-bg .panel-content {
-        flex: 1 1 auto;
-        min-height: 0;
-        height: auto;
-        overflow-y: auto;
-        padding-top: 8px;
-    }
-
-    /* City + mode are already quick-picks up in the header — no need to
-       repeat them inside the drawer. The long intro quote is trimmed too,
-       keeping just the dark-mode toggle reachable. */
-    .dashboard-bg .panel-section.sec-city,
-    .dashboard-bg .panel-section.sec-explore,
-    .dashboard-bg .lp-intro-quote { display: none; }
-    .dashboard-bg .lp-intro { margin-bottom: 4px; padding-bottom: 4px; }
-
-    .drawer-header-mobile {
-        display: flex;
-        align-items: center;
-        gap: 7px;
-        padding: 12px 8px 8px 14px;
-        font-size: 12.5px;
-        font-weight: 700;
-        color: var(--text);
-        flex-shrink: 0;
-    }
-    .drawer-header-mobile i:first-child { font-size: 15px; color: var(--text-muted); }
-    .drawer-close-btn {
-        margin-left: auto;
-        width: 24px;
-        height: 24px;
-        border-radius: 50%;
-        border: none;
-        background: rgba(0,0,0,0.06);
-        color: var(--text-muted);
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        cursor: pointer;
-        font-size: 11px;
-    }
-    body.dark-mode .drawer-close-btn { background: rgba(255,255,255,0.08); }
-
-    /* ── DETAIL SHEET (.detail-panel) — hidden until a road is tapped ── */
-    .detail-panel {
-        position: fixed;
-        top: auto;
-        left: 0; right: 0;
-        width: auto;
-        bottom: 0;
-        height: 72vh;
-        max-height: 72vh;
-        border-radius: 20px 20px 0 0;
-        z-index: 55;
-        display: flex;
-        flex-direction: column;
-        transform: translateY(100%);
-        transition: transform 0.32s cubic-bezier(0.32,0.72,0,1);
-    }
-    .detail-panel.sheet-dragging { transition: none; }
-    .detail-panel.sheet-visible  { transform: translateY(calc(100% - 92px)); }
-    .detail-panel.sheet-expanded { transform: translateY(0); }
-
-    .detail-panel .detail-empty,
-    .detail-panel .detail-loaded {
-        flex: 1;
-        min-height: 0;
-        height: auto;
-    }
-
-    .sheet-handle {
-        display: flex;
-        justify-content: center;
-        align-items: center;
-        padding: 9px 0 6px;
-        flex-shrink: 0;
-        cursor: grab;
-        touch-action: none;
-    }
-    .sheet-handle::before {
-        content: '';
-        width: 38px;
-        height: 4px;
-        border-radius: 99px;
-        background: rgba(120,110,95,0.3);
-    }
-    body.dark-mode .sheet-handle::before { background: rgba(255,255,255,0.25); }
-
-    .detail-sheet-close {
-        position: absolute;
-        top: 10px;
-        right: 12px;
-        width: 26px;
-        height: 26px;
-        border-radius: 50%;
-        border: 1.5px solid var(--border);
-        background: rgba(255,255,255,0.6);
-        color: var(--text-muted);
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        cursor: pointer;
-        font-size: 13px;
-        z-index: 2;
-    }
-    body.dark-mode .detail-sheet-close { background: rgba(255,255,255,0.08); }
-
-    /* ── SWIPE-UP HINT TOAST ── */
-    .mobile-swipe-hint {
-        position: fixed;
-        left: 50%;
-        bottom: 104px;
-        transform: translateX(-50%);
-        z-index: 56;
-        display: flex;
-        align-items: center;
-        gap: 5px;
-        background: rgba(31,41,55,0.85);
-        color: #fff;
-        font-size: 11.5px;
-        font-weight: 700;
-        padding: 7px 14px 7px 10px;
-        border-radius: 99px;
-        white-space: nowrap;
-        opacity: 0;
-        pointer-events: none;
-        transition: opacity 0.3s ease, transform 0.3s ease;
-        backdrop-filter: blur(6px);
-    }
-    .mobile-swipe-hint.show { opacity: 1; transform: translateX(-50%) translateY(-4px); }
-    .mobile-swipe-hint i { font-size: 14px; animation: swipeHintBounce 1.4s ease-in-out infinite; }
-    @keyframes swipeHintBounce {
-        0%, 100% { transform: translateY(0); }
-        50%      { transform: translateY(-3px); }
-    }
-
-    /* ── NARROWER INDICATOR CARDS — 5 columns, tighter padding ── */
-    .indicator-grid { grid-template-columns: repeat(5, 1fr); gap: 5px; }
-    .ind-flip, .ind-flip-inner { min-height: 62px; }
-    .ind-flip-front { padding: 5px 3px 4px; }
-    .ind-flip-front-icon, .ind-flip-front-icon i { font-size: 15px; margin-bottom: 1px; }
-    .ind-flip-front-label { font-size: 6.8px; }
-    .ind-flip-front-val { font-size: 7.2px; padding: 1px 3px; margin-bottom: 2px; }
-
-    /* ── INTRO OVERLAY — let content flow naturally so the credit line
-       never overlaps the "Let's explore" button on short viewports ── */
-    .intro-overlay {
-        padding-top: 7vh;
-        padding-bottom: 24px;
-        overflow-y: auto;
-        justify-content: flex-start;
-    }
-    .intro-card { width: 88vw; padding: 22px 18px 20px; }
-    .intro-logo-img { height: 48px; }
-    .intro-headline { font-size: 18px; margin-bottom: 10px; }
-    .intro-tagline-text { font-size: 10.5px; }
-    .intro-body { font-size: 12px; line-height: 1.55; }
-    .intro-credit {
-        position: static;
-        transform: none;
-        margin-top: 18px;
-        white-space: normal;
-        text-align: center;
-    }
-    .intro-desktop-tip {
-        display: flex;
-        align-items: center;
-        gap: 6px;
-        margin: 14px 0 0;
-        padding: 8px 10px;
-        font-size: 10.5px;
-        line-height: 1.4;
-        color: #185FA5;
-        background: rgba(37,99,235,0.08);
-        border: 1px solid rgba(37,99,235,0.18);
-        border-radius: 10px;
-        text-align: left;
-    }
-    .intro-desktop-tip i { font-size: 14px; flex-shrink: 0; }
-    body.dark-mode .intro-desktop-tip { color: #93c5fd; background: rgba(37,99,235,0.12); border-color: rgba(147,197,253,0.25); }
-
-    /* ── DISMISSIBLE "TRY DESKTOP" BANNER ── */
-    .mobile-desktop-banner {
-        position: fixed;
-        top: 0; left: 0; right: 0;
-        z-index: 60;
-        display: none; /* JS shows it if not previously dismissed */
-        align-items: center;
-        gap: 8px;
-        padding: 7px 12px;
-        font-size: 11px;
-        font-weight: 600;
-        color: #185FA5;
-        background: #E6F1FB;
-        border-bottom: 1px solid rgba(24,95,165,0.18);
-    }
-    .mobile-desktop-banner.show { display: flex; }
-    .mobile-desktop-banner i:first-child { font-size: 14px; flex-shrink: 0; }
-    .mobile-desktop-banner span { flex: 1; line-height: 1.3; }
-    .mobile-desktop-banner button {
-        flex-shrink: 0;
-        width: 20px; height: 20px;
-        border: none;
-        border-radius: 50%;
-        background: rgba(24,95,165,0.12);
-        color: #185FA5;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        cursor: pointer;
-        font-size: 10px;
-    }
-    body.dark-mode .mobile-desktop-banner { background: rgba(24,95,165,0.16); color: #93c5fd; }
-    body.dark-mode .mobile-desktop-banner button { background: rgba(147,197,253,0.15); color: #93c5fd; }
-    /* Banner pushes header/toggle/drawer down by its own height while shown
-       — driven by a class on <body> (set via JS) rather than DOM-order
-       sibling combinators, which are fragile to markup reshuffles. */
-    body.has-desktop-banner .header-window { top: 34px; }
-    body.has-desktop-banner .filters-toggle-btn,
-    body.has-desktop-banner .map-top-left-row { top: 228px; }
-    body.has-desktop-banner .dashboard-bg { top: 228px; }
-    body.has-desktop-banner .map-fact-card { top: 268px; }
-}
-
-/* Mobile-only elements stay hidden on desktop — scoped with its own
-   media query (not unscoped selectors) so it can never win the cascade
-   against the mobile rules above, regardless of source order/specificity. */
-@media (min-width: 769px) {
-    .mobile-credit-line,
-    .filters-toggle-btn,
-    .mobile-swipe-hint,
-    .mobile-build-badge,
-    .mobile-desktop-banner,
-    .intro-desktop-tip,
-    .header-window .map-mobile-controls,
-    .header-window .mobile-mood-slot { display: none; }
-}
-
-/* Very small phones — 5-col indicator grid gets cramped, drop back to 4;
-   also tighten header + chip text a bit further */
-@media (max-width: 380px) {
-    .indicator-grid { grid-template-columns: repeat(4, 1fr) !important; }
-    .header-title { font-size: 12px; }
-    .header-sub { display: none; }
-    .quality-faces span, .poi-chip span { font-size: 8px; }
-    .dashboard-bg { width: min(84vw, 260px); }
-}
-
-

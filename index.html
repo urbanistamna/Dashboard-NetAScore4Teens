@@ -26,7 +26,7 @@
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;500;600;700;800&display=swap" rel="stylesheet">
     <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
-    <link rel="stylesheet" href="./style.css?v=16">
+    <link rel="stylesheet" href="./style.css?v=8">
 </head>
 <body>
 
@@ -672,12 +672,6 @@
             create better places for teens.
         </p>
 
-        <!-- MOBILE ONLY: soft nudge toward desktop for the full toolset -->
-        <p class="intro-desktop-tip">
-            <i class="ti ti-device-desktop"></i>
-            Tip: for the deepest exploration &amp; full toolset, this dashboard works best on a larger screen.
-        </p>
-
     </div>
 
     <!-- CTA outside the card, below it -->
@@ -696,15 +690,6 @@
 
 <div id="map-container">
 
-    <!-- MOBILE ONLY: dismissible reminder that the full toolset lives on
-         desktop. Remembers dismissal via localStorage so it doesn't nag
-         on every visit. -->
-    <div class="mobile-desktop-banner" id="mobile-desktop-banner">
-        <i class="ti ti-device-desktop"></i>
-        <span>For deeper exploration, try this dashboard on a larger screen.</span>
-        <button id="mobile-desktop-banner-close" aria-label="Dismiss" type="button"><i class="ti ti-x"></i></button>
-    </div>
-
     <!-- HEADER -->
     <div class="header-window">
         <div class="header-content">
@@ -714,43 +699,10 @@
                 <div class="header-sub">Streets for Young People</div>
             </div>
         </div>
-        <!-- MOBILE ONLY: city + mode quick-picks, shown as a second row of
-             the header so they're always visible ("layers on top"). They
-             proxy-click the real controls inside the filters drawer. -->
-        <div class="map-mobile-controls" id="map-mobile-controls">
-            <div class="mmc-group" id="mmc-city-group">
-                <button class="mmc-chip active" data-city="salzburg" type="button"><i class="ti ti-map-pin"></i>Salzburg</button>
-                <button class="mmc-chip" data-city="olomouc" type="button"><i class="ti ti-map-pin"></i>Olomouc</button>
-            </div>
-            <div class="mmc-group" id="mmc-mode-group">
-                <button class="mmc-chip active" data-mode="walkability" type="button"><i class="ti ti-walk"></i>Walking</button>
-                <button class="mmc-chip" data-mode="bikeability" type="button"><i class="ti ti-bike"></i>Biking</button>
-            </div>
-        </div>
-        <!-- MOBILE ONLY: the score-filter section (mood chips + slider) gets
-             physically relocated in here by JS — it's the one control kept
-             always visible; everything else (POI, environmental layers)
-             stays tucked in the collapsible drawer. -->
-        <div class="mobile-mood-slot" id="mobile-mood-slot"></div>
     </div>
 
-    <div class="mobile-build-badge" id="mobile-build-badge">mobile-ui-build-6</div>
-
-    <!-- MOBILE ONLY: toggle button that opens the left-side filters/layers
-         drawer. Independent of the drawer itself so it stays visible even
-         while the drawer is collapsed. -->
-    <button class="filters-toggle-btn" id="filters-toggle-btn" aria-label="Filters &amp; Layers" type="button">
-        <i class="ti ti-adjustments-horizontal"></i>
-    </button>
-
     <!-- LEFT PANEL -->
-    <div class="dashboard-bg" id="filters-sheet">
-        <!-- Mobile-only: drawer header with title + close button -->
-        <div class="drawer-header-mobile" id="filters-drawer-header">
-            <i class="ti ti-adjustments-horizontal"></i>
-            <span>Filters &amp; Layers</span>
-            <button class="drawer-close-btn" id="filters-drawer-close" aria-label="Close" type="button"><i class="ti ti-x"></i></button>
-        </div>
+    <div class="dashboard-bg">
         <div class="panel-content">
 
             <!-- Intro quote + dark toggle -->
@@ -768,10 +720,10 @@
                 <h3><i class="ti ti-map-pin"></i> Choose a city</h3>
                 <div class="mode-btns">
                     <div class="mode-btn active-city" data-city="salzburg">
-                        <i class="ti ti-map-pin"></i><span>Salzburg</span>
+                        <i class="ti ti-map-2"></i><span>Salzburg</span>
                     </div>
                     <div class="mode-btn" data-city="olomouc">
-                        <i class="ti ti-map-pin"></i><span>Olomouc</span>
+                        <i class="ti ti-map-2"></i><span>Olomouc</span>
                     </div>
                 </div>
                 <p class="city-note" id="city-note" style="display:none;">Environmental Layers (Land Use, Street Trees) are currently available for Salzburg only.</p>
@@ -863,22 +815,15 @@
                     <div class="env-legend-row"><div class="env-legend-swatch" style="background:#fb7185"></div><span>Construction / extraction</span></div>
                     <div class="env-legend-row"><div class="env-legend-swatch" style="background:#e2e8f0"></div><span>Other / unused land</span></div>
                 </div>
+                <div class="env-legend" id="stl-panel-legend" style="display:none;">
+                    <div class="env-legend-row"><div class="env-legend-swatch" style="background:#5b7a4f"></div><span>Street tree canopy (Copernicus 2021)</span></div>
+                </div>
                 <div class="env-opacity-row" id="env-opacity-row" style="display:none;">
                     <label class="env-opacity-label"><i class="ti ti-adjustments"></i> Opacity</label>
                     <input type="range" class="env-opacity-slider" id="env-opacity-slider" min="10" max="80" value="35">
                     <span class="env-opacity-value" id="env-opacity-value">35%</span>
                 </div>
-                <div class="env-legend" id="stl-panel-legend" style="display:none;">
-                    <div class="env-legend-row"><div class="env-legend-swatch" style="background:#5b7a4f"></div><span>Street tree canopy (Copernicus 2021)</span></div>
-                </div>
-                <div class="env-opacity-row" id="env-opacity-row-stl" style="display:none;">
-                    <label class="env-opacity-label"><i class="ti ti-adjustments"></i> Opacity</label>
-                    <input type="range" class="env-opacity-slider" id="env-opacity-slider-stl" min="10" max="100" value="75">
-                    <span class="env-opacity-value" id="env-opacity-value-stl">75%</span>
-                </div>
             </div>
-
-            <div class="mobile-credit-line">NetAScore4Teens · Developed by Amna Azeem &copy; 2026</div>
 
         </div>
     </div>
@@ -896,13 +841,11 @@
             <i class="ti ti-hand-click"></i>
             <span>Hover to preview · Click to pin details</span>
         </div>
-        <!-- Location search (OpenStreetMap Nominatim) + curious button -->
+        <!-- Location badge + curious button inline -->
         <div class="map-top-left-row">
-            <div class="map-search-wrap" id="map-search-wrap">
-                <i class="ti ti-search map-search-icon"></i>
-                <input type="text" id="map-search-input" class="map-search-input" placeholder="Search location…" autocomplete="off" spellcheck="false">
-                <button id="map-search-clear" class="map-search-clear" style="display:none;" aria-label="Clear search" type="button"><i class="ti ti-x"></i></button>
-                <div class="map-search-results" id="map-search-results" style="display:none;"></div>
+            <div class="map-location-badge" id="map-location-badge">
+                <i class="ti ti-map-pin"></i>
+                <span id="map-location-text">Salzburg, Austria</span>
             </div>
             <div class="map-curious-btn" id="map-curious-btn" title="City insights">
                 <svg viewBox="0 0 24 24" width="16" height="16" fill="none" xmlns="http://www.w3.org/2000/svg">
@@ -1015,19 +958,6 @@
 
     <!-- RIGHT DETAIL PANEL -->
     <div class="detail-panel" id="detail-panel">
-
-        <!-- Mobile-only: drag handle + close (bottom sheet on small screens) -->
-        <div class="sheet-handle" id="detail-sheet-handle"></div>
-        <button class="detail-sheet-close" id="detail-sheet-close" aria-label="Close details">
-            <i class="ti ti-chevron-down"></i>
-        </button>
-
-        <!-- MOBILE ONLY: brief toast telling first-time users the sheet is
-             swipeable. Shown when a road is tapped, auto-fades, and is
-             dismissed immediately once the user actually drags/expands it. -->
-        <div class="mobile-swipe-hint" id="mobile-swipe-hint">
-            <i class="ti ti-chevron-up"></i><span>Swipe up for road details</span>
-        </div>
 
         <div class="detail-empty" id="detail-empty">
 
@@ -1163,6 +1093,6 @@
     </div>
 
 </div><!-- end #map-container -->
-<script src="./script.js?v=42"></script>
+<script src="./script.js?v=34"></script>
 </body>
 </html>
