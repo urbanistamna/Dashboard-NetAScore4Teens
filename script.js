@@ -649,13 +649,15 @@ document.addEventListener('DOMContentLoaded', () => {
             btn.classList.add('active');
             document.getElementById('rp-panel-metrics').style.display    = rpTab === 'metrics'    ? '' : 'none';
             document.getElementById('rp-panel-experience').style.display = rpTab === 'experience' ? '' : 'none';
-            updateRingLabels();
         });
     });
 
     function showEmpty() {
         document.getElementById('detail-empty').style.display  = 'flex';
         document.getElementById('detail-loaded').style.display = 'none';
+        // Mobile: slide the detail bottom-sheet back down out of view.
+        const dp = document.getElementById('detail-panel');
+        if (dp) dp.classList.remove('sheet-visible', 'sheet-expanded');
         if (breakdownChart) { breakdownChart.destroy(); breakdownChart = null; }
         currentProps = null;
         if (map) setHighlight(null);
@@ -677,6 +679,15 @@ document.addEventListener('DOMContentLoaded', () => {
         document.getElementById('detail-empty').style.display  = 'none';
         document.getElementById('detail-loaded').style.display = 'block';
         document.getElementById('map-hint').classList.add('hidden');
+        // Mobile: bring the detail bottom-sheet into view (peek state, unless
+        // it was already expanded — keep it expanded across selection changes)
+        // and make room by collapsing the filters sheet.
+        const dp = document.getElementById('detail-panel');
+        if (dp) dp.classList.add('sheet-visible');
+        const fs = document.getElementById('filters-sheet');
+        if (fs) fs.classList.remove('sheet-expanded');
+        const ftb = document.getElementById('filters-toggle-btn');
+        if (ftb) ftb.classList.remove('active');
 
         const ik    = currentMode === 'walkability' ? 'index_walk_ft' : 'index_bike_ft';
         const score = parseFloat(props[ik]);
@@ -1145,6 +1156,144 @@ document.addEventListener('DOMContentLoaded', () => {
     map.once('load', () => { mapDidLoad = true; });
     setTimeout(() => { if (!mapDidLoad) showMapLoadError(); }, 20000);
 
+    // =========================================================
+    // LOCATION SEARCH — OpenStreetMap Nominatim, like osm.org's search box
+    // =========================================================
+    (function setupLocationSearch() {
+        const wrap      = document.getElementById('map-search-wrap');
+        const input     = document.getElementById('map-search-input');
+        const clearBtn  = document.getElementById('map-search-clear');
+        const resultsEl = document.getElementById('map-search-results');
+        if (!wrap || !input || !resultsEl) return;
+
+        let searchMarker  = null;
+        let debounceTimer = null;
+        let activeRequest = 0; // guards against out-of-order responses
+
+        function closeResults() {
+            resultsEl.style.display = 'none';
+            resultsEl.innerHTML = '';
+        }
+
+        function setLoading() {
+            resultsEl.innerHTML = '<div class="map-search-result-loading">Searching…</div>';
+            resultsEl.style.display = 'block';
+        }
+
+        function renderResults(list) {
+            if (!list.length) {
+                resultsEl.innerHTML = '<div class="map-search-result-empty">No matches found</div>';
+                resultsEl.style.display = 'block';
+                return;
+            }
+            resultsEl.innerHTML = '';
+            list.forEach(place => {
+                const item = document.createElement('div');
+                item.className = 'map-search-result-item';
+                const parts = (place.display_name || '').split(',');
+                const main  = parts[0] || place.display_name || 'Unknown place';
+                const sub   = parts.slice(1, 4).join(',').trim();
+                item.innerHTML = '<i class="ti ti-map-pin"></i><div><div class="map-search-result-main"></div><div class="map-search-result-sub"></div></div>';
+                item.querySelector('.map-search-result-main').textContent = main;
+                item.querySelector('.map-search-result-sub').textContent = sub;
+                item.addEventListener('click', () => selectResult(place));
+                resultsEl.appendChild(item);
+            });
+            resultsEl.style.display = 'block';
+        }
+
+        function selectResult(place) {
+            const lon = parseFloat(place.lon);
+            const lat = parseFloat(place.lat);
+            if (isNaN(lon) || isNaN(lat)) return;
+
+            input.value = (place.display_name || '').split(',')[0];
+            clearBtn.style.display = 'flex';
+            closeResults();
+            wrap.classList.remove('focused');
+            input.blur();
+
+            let zoom = 15;
+            if (place.boundingbox && place.boundingbox.length === 4) {
+                try {
+                    map.fitBounds([
+                        [parseFloat(place.boundingbox[2]), parseFloat(place.boundingbox[0])],
+                        [parseFloat(place.boundingbox[3]), parseFloat(place.boundingbox[1])]
+                    ], { padding: 60, duration: 900, maxZoom: 17 });
+                } catch (e) {
+                    map.flyTo({ center: [lon, lat], zoom, duration: 900 });
+                }
+            } else {
+                map.flyTo({ center: [lon, lat], zoom, duration: 900 });
+            }
+
+            if (searchMarker) searchMarker.remove();
+            const el = document.createElement('div');
+            el.className = 'map-search-marker';
+            searchMarker = new maplibregl.Marker({ element: el, anchor: 'bottom' })
+                .setLngLat([lon, lat])
+                .addTo(map);
+        }
+
+        async function runSearch(query) {
+            const requestId = ++activeRequest;
+            setLoading();
+            try {
+                // Softly bias results toward whichever city is currently in
+                // view (does not exclude results elsewhere — just ranks
+                // nearby matches higher), using Nominatim's viewbox param.
+                let viewboxParam = '';
+                try {
+                    const b = map.getBounds();
+                    viewboxParam = '&viewbox=' + [b.getWest(), b.getNorth(), b.getEast(), b.getSouth()].join(',');
+                } catch (e) { /* map not ready yet — search without bias */ }
+
+                const url = 'https://nominatim.openstreetmap.org/search?format=jsonv2&addressdetails=0&limit=6&q='
+                    + encodeURIComponent(query) + viewboxParam;
+                const res  = await fetch(url, { headers: { 'Accept-Language': 'en' } });
+                const data = await res.json();
+                if (requestId !== activeRequest) return; // a newer search superseded this one
+                renderResults(Array.isArray(data) ? data : []);
+            } catch (e) {
+                if (requestId !== activeRequest) return;
+                resultsEl.innerHTML = '<div class="map-search-result-empty">Search unavailable — check your connection</div>';
+                resultsEl.style.display = 'block';
+            }
+        }
+
+        input.addEventListener('input', () => {
+            const q = input.value.trim();
+            clearBtn.style.display = q ? 'flex' : 'none';
+            clearTimeout(debounceTimer);
+            if (q.length < 3) { closeResults(); return; }
+            debounceTimer = setTimeout(() => runSearch(q), 400);
+        });
+
+        input.addEventListener('focus', () => {
+            wrap.classList.add('focused');
+            if (input.value.trim().length >= 3 && resultsEl.innerHTML) resultsEl.style.display = 'block';
+        });
+
+        input.addEventListener('keydown', (e) => {
+            if (e.key === 'Escape') { input.blur(); closeResults(); wrap.classList.remove('focused'); }
+        });
+
+        clearBtn.addEventListener('click', () => {
+            input.value = '';
+            clearBtn.style.display = 'none';
+            closeResults();
+            input.focus();
+            if (searchMarker) { searchMarker.remove(); searchMarker = null; }
+        });
+
+        document.addEventListener('click', (e) => {
+            if (!wrap.contains(e.target)) {
+                closeResults();
+                wrap.classList.remove('focused');
+            }
+        });
+    })();
+
     function addMapLayers() {
         if (!map.getSource('netascore')) {
             map.addSource('netascore', { type:'vector', url:'pmtiles://' + TILESET_URL });
@@ -1173,11 +1322,14 @@ document.addEventListener('DOMContentLoaded', () => {
             map.addLayer({ id:'walkability-layer', type:'line', source:'netascore', 'source-layer':SOURCE_LAYER, layout:{'line-cap':'round','line-join':'round', visibility: walkVis}, paint:sharedPaint('index_walk_ft') });
         if (!map.getLayer('bikeability-layer'))
             map.addLayer({ id:'bikeability-layer', type:'line', source:'netascore', 'source-layer':SOURCE_LAYER, layout:{'line-cap':'round','line-join':'round', visibility: bikeVis}, paint:sharedPaint('index_bike_ft') });
+        const isMobileMap = window.innerWidth <= 768;
         if (!map.getLayer('highlight-layer'))
             map.addLayer({ id:'highlight-layer', type:'line', source:'netascore', 'source-layer':SOURCE_LAYER,
                 layout:{'line-cap':'round','line-join':'round'},
                 paint:{
-                    'line-width':    ['interpolate',['linear'],['zoom'],10,4,12,6,14,9,16,13],
+                    'line-width':    isMobileMap
+                        ? ['interpolate',['linear'],['zoom'],10,3,12,4.5,14,6.5,16,9]
+                        : ['interpolate',['linear'],['zoom'],10,4,12,6,14,9,16,13],
                     'line-color':    '#ffffff',
                     'line-opacity':  1,
                 },
@@ -1186,7 +1338,9 @@ document.addEventListener('DOMContentLoaded', () => {
             map.addLayer({ id:'highlight-layer-inner', type:'line', source:'netascore', 'source-layer':SOURCE_LAYER,
                 layout:{'line-cap':'round','line-join':'round'},
                 paint:{
-                    'line-width':    ['interpolate',['linear'],['zoom'],10,2,12,3.5,14,5.5,16,8],
+                    'line-width':    isMobileMap
+                        ? ['interpolate',['linear'],['zoom'],10,1.5,12,2.5,14,4,16,5.5]
+                        : ['interpolate',['linear'],['zoom'],10,2,12,3.5,14,5.5,16,8],
                     'line-color':    highlightColorExpr(),
                     'line-opacity':  1,
                 },
@@ -1239,8 +1393,8 @@ document.addEventListener('DOMContentLoaded', () => {
         const fsMode = document.getElementById('fs-hud-mode');
         if (fsMode) fsMode.innerHTML = '<i class="ti ti-walk"></i> Walkability';
 
-        const locText = document.getElementById('map-location-text');
-        if (locText) locText.textContent = cfg.label + ', ' + cfg.country;
+        const searchInputEl = document.getElementById('map-search-input');
+        if (searchInputEl) searchInputEl.placeholder = 'Search in ' + cfg.label + '…';
 
         if (typeof clearPin === 'function') clearPin();
 
@@ -1356,6 +1510,10 @@ document.addEventListener('DOMContentLoaded', () => {
             setHighlight(null);
             showEmpty();
         }
+        // Exposed so the mobile detail-sheet close button (wired up in a
+        // separate DOMContentLoaded block, outside this closure) can clear
+        // the pinned road without duplicating this logic.
+        window.__na4tClearPin = clearPin;
 
         function snapSliderToScore(score) {
             const chipIndex = score <= 0.2 ? 0 : score <= 0.4 ? 1 : score <= 0.6 ? 2 : score <= 0.8 ? 3 : 4;
@@ -1387,7 +1545,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 }, 150);
                 return;
             }
-            map.getCanvas().style.cursor = 'crosshair';
+            map.getCanvas().style.cursor = 'pointer';
             const props = feats[0].properties; const osmId = String(props.osm_id);
             buildTooltip(props, e.originalEvent.clientX, e.originalEvent.clientY);
             if (osmId === lastHoverId) return;
@@ -1415,17 +1573,21 @@ document.addEventListener('DOMContentLoaded', () => {
             if (pinnedId === osmId) {
                 setPinned(null);
                 setHighlight(null);
+                showEmpty();
             } else {
                 setPinned(props);
                 setHighlight(osmId);
                 const scoreVal = props[currentMode === 'walkability' ? 'index_walk_ft' : 'index_bike_ft'];
                 if (scoreVal !== null && scoreVal !== undefined) snapSliderToScore(scoreVal);
+                // On touch devices there's no preceding 'mousemove' hover event,
+                // so showDetail() would otherwise never run for a tap alone.
+                showDetail(props);
             }
             document.getElementById('map-hint').classList.add('hidden');
         });
 
         ['walkability-layer','bikeability-layer'].forEach(id => {
-            map.on('mouseenter', id, () => { map.getCanvas().style.cursor = 'crosshair'; });
+            map.on('mouseenter', id, () => { map.getCanvas().style.cursor = 'pointer'; });
             map.on('mouseleave', id, () => { map.getCanvas().style.cursor = ''; });
         });
 
@@ -2228,3 +2390,263 @@ function initEnvLayers() {
         });
     }
 }
+
+// ── MOBILE BOTTOM SHEETS — filters panel + detail panel ─────────
+// Self-contained: only touches DOM/classList, doesn't rely on any
+// variables from the map-init closure above (aside from the
+// window.__na4tClearPin hook exposed for the close button).
+document.addEventListener('DOMContentLoaded', () => {
+
+    console.log('[mobile-ui-build-6] mobile sheet script running. filters-toggle-btn found:', !!document.getElementById('filters-toggle-btn'));
+
+    function isMobile() { return window.matchMedia('(max-width: 768px)').matches; }
+
+    // Makes `sheetEl` draggable via `handles` (one or more elements: the
+    // drag handle bar and/or a tappable peek header). Dragging repositions
+    // the sheet in real time; releasing snaps it to whichever of
+    // `expandedClass`/collapsed state is closer, based on how far it moved.
+    function makeDraggableSheet(sheetEl, handles, expandedClass) {
+        if (!sheetEl || !handles.length) return;
+
+        let dragging   = false;
+        let startY     = 0;
+        let startPx    = 0;   // sheet's translateY in px at drag start
+        let sheetH     = 0;
+
+        function currentTranslatePx() {
+            const rect = sheetEl.getBoundingClientRect();
+            return rect.top - (window.innerHeight - sheetH);
+        }
+
+        function onPointerDown(e) {
+            if (!isMobile()) return;
+            dragging = true;
+            sheetH   = sheetEl.getBoundingClientRect().height;
+            startY   = (e.touches ? e.touches[0].clientY : e.clientY);
+            startPx  = Math.max(0, currentTranslatePx());
+            sheetEl.classList.add('sheet-dragging');
+            document.addEventListener('mousemove', onPointerMove);
+            document.addEventListener('touchmove', onPointerMove, { passive: false });
+            document.addEventListener('mouseup', onPointerUp);
+            document.addEventListener('touchend', onPointerUp);
+        }
+
+        function onPointerMove(e) {
+            if (!dragging) return;
+            if (e.cancelable) e.preventDefault();
+            const y = (e.touches ? e.touches[0].clientY : e.clientY);
+            const delta = y - startY;
+            let px = startPx + delta;
+            px = Math.max(0, Math.min(px, sheetH));
+            sheetEl.style.transform = 'translateY(' + px + 'px)';
+        }
+
+        function onPointerUp(e) {
+            if (!dragging) return;
+            dragging = false;
+            sheetEl.classList.remove('sheet-dragging');
+            sheetEl.style.transform = '';
+            document.removeEventListener('mousemove', onPointerMove);
+            document.removeEventListener('touchmove', onPointerMove);
+            document.removeEventListener('mouseup', onPointerUp);
+            document.removeEventListener('touchend', onPointerUp);
+
+            const y = (e.changedTouches ? e.changedTouches[0].clientY : e.clientY);
+            const movedDown = y - startY;
+            // Snap to expanded if dragged up more than a third of the sheet's
+            // height, or straight to expanded/collapsed if it was basically a
+            // tap (tiny movement) — a tap toggles the current state instead.
+            const TAP_THRESHOLD = 6;
+            if (Math.abs(movedDown) < TAP_THRESHOLD) {
+                sheetEl.classList.toggle(expandedClass);
+                return;
+            }
+            if (movedDown < -sheetH / 4) {
+                sheetEl.classList.add(expandedClass);
+            } else if (movedDown > sheetH / 4) {
+                sheetEl.classList.remove(expandedClass);
+            } else {
+                // Small drag — snap back to whichever state it was closer to.
+                const endPx = startPx + movedDown;
+                if (endPx < sheetH / 2) sheetEl.classList.add(expandedClass);
+                else sheetEl.classList.remove(expandedClass);
+            }
+        }
+
+        handles.forEach(h => {
+            h.addEventListener('mousedown', onPointerDown);
+            h.addEventListener('touchstart', onPointerDown, { passive: true });
+        });
+    }
+
+    // ── Filters sheet ──
+    // ── Filters drawer — simple toggle button, no drag (small flyout menu,
+    // not a full-width sheet, so drag gestures aren't needed here). ──
+    const filtersSheet = document.getElementById('filters-sheet');
+    const filtersToggleBtn = document.getElementById('filters-toggle-btn');
+    const filtersDrawerClose = document.getElementById('filters-drawer-close');
+    function closeFiltersDrawer() {
+        if (filtersSheet) filtersSheet.classList.remove('sheet-expanded');
+        if (filtersToggleBtn) filtersToggleBtn.classList.remove('active');
+    }
+    function openFiltersDrawer() {
+        if (filtersSheet) filtersSheet.classList.add('sheet-expanded');
+        if (filtersToggleBtn) filtersToggleBtn.classList.add('active');
+    }
+    if (filtersToggleBtn) {
+        filtersToggleBtn.addEventListener('click', () => {
+            if (filtersSheet && filtersSheet.classList.contains('sheet-expanded')) closeFiltersDrawer();
+            else openFiltersDrawer();
+        });
+    }
+    if (filtersDrawerClose) filtersDrawerClose.addEventListener('click', closeFiltersDrawer);
+    // Tapping the map should close an open drawer, same as tapping outside
+    // any other flyout menu would.
+    document.addEventListener('click', (e) => {
+        if (!isMobile() || !filtersSheet || !filtersSheet.classList.contains('sheet-expanded')) return;
+        if (filtersSheet.contains(e.target) || (filtersToggleBtn && filtersToggleBtn.contains(e.target))) return;
+        if (e.target.closest('#map')) closeFiltersDrawer();
+    });
+
+    // ── Detail sheet ──
+    const detailSheet  = document.getElementById('detail-panel');
+    const detailHandle = document.getElementById('detail-sheet-handle');
+    makeDraggableSheet(detailSheet, [detailHandle].filter(Boolean), 'sheet-expanded');
+
+    // Tapping the ring/hero area of a collapsed detail sheet should also
+    // expand it (bigger, easier tap target than just the thin handle).
+    const rpHeroRow = document.getElementById('rp-hero');
+    if (rpHeroRow && detailSheet) {
+        rpHeroRow.addEventListener('click', () => {
+            if (isMobile() && detailSheet.classList.contains('sheet-visible')) {
+                detailSheet.classList.toggle('sheet-expanded');
+            }
+        });
+    }
+
+    // Explicit close button — fully dismisses the detail sheet and clears
+    // the pinned road so the map/sheet state stay in sync.
+    const detailClose = document.getElementById('detail-sheet-close');
+    if (detailClose) {
+        detailClose.addEventListener('click', () => {
+            if (typeof window.__na4tClearPin === 'function') window.__na4tClearPin();
+            if (detailSheet) detailSheet.classList.remove('sheet-visible', 'sheet-expanded');
+        });
+    }
+
+    // ── FLOATING CITY / MODE CHIPS (on the map) ──────────────────
+    // These proxy-click the real .mode-btn controls inside the filters
+    // sheet (reusing all existing city/mode-switch logic untouched) and
+    // mirror their active state back onto themselves.
+    function syncMobileTopControls() {
+        document.querySelectorAll('.mmc-chip[data-city]').forEach(chip => {
+            const real = document.querySelector('.mode-btn[data-city="' + chip.dataset.city + '"]');
+            chip.classList.toggle('active', !!real && real.classList.contains('active-city'));
+        });
+        document.querySelectorAll('.mmc-chip[data-mode]').forEach(chip => {
+            const real = document.querySelector('.mode-btn[data-mode="' + chip.dataset.mode + '"]');
+            const activeClass = chip.dataset.mode === 'walkability' ? 'active-walk' : 'active-bike';
+            chip.classList.toggle('active', !!real && real.classList.contains(activeClass));
+        });
+    }
+
+    document.querySelectorAll('.mmc-chip[data-city]').forEach(chip => {
+        chip.addEventListener('click', () => {
+            const real = document.querySelector('.mode-btn[data-city="' + chip.dataset.city + '"]');
+            if (real) real.click();
+            syncMobileTopControls();
+        });
+    });
+    document.querySelectorAll('.mmc-chip[data-mode]').forEach(chip => {
+        chip.addEventListener('click', () => {
+            const real = document.querySelector('.mode-btn[data-mode="' + chip.dataset.mode + '"]');
+            if (real) real.click();
+            syncMobileTopControls();
+        });
+    });
+    // Also resync if the ORIGINAL controls inside the sheet get clicked
+    // directly (e.g. user had the sheet expanded and tapped there instead).
+    document.querySelectorAll('.mode-btn[data-city], .mode-btn[data-mode]').forEach(btn => {
+        btn.addEventListener('click', () => setTimeout(syncMobileTopControls, 0));
+    });
+    syncMobileTopControls();
+
+    // ── SWIPE-UP HINT TOAST ───────────────────────────────────────
+    // Shown the moment the detail sheet becomes visible (a road was
+    // tapped); auto-fades after a few seconds, and disappears immediately
+    // once the user drags the sheet or it gets expanded.
+    const swipeHint = document.getElementById('mobile-swipe-hint');
+    if (swipeHint && detailSheet) {
+        let hintTimer = null;
+        let wasVisible = false;
+        function hideHint() {
+            swipeHint.classList.remove('show');
+            clearTimeout(hintTimer);
+        }
+        const observer = new MutationObserver(() => {
+            if (!isMobile()) return;
+            const nowVisible  = detailSheet.classList.contains('sheet-visible');
+            const nowExpanded = detailSheet.classList.contains('sheet-expanded');
+            if (nowExpanded) { hideHint(); }
+            else if (nowVisible && !wasVisible) {
+                swipeHint.classList.add('show');
+                clearTimeout(hintTimer);
+                hintTimer = setTimeout(hideHint, 3200);
+            } else if (!nowVisible) {
+                hideHint();
+            }
+            wasVisible = nowVisible;
+        });
+        observer.observe(detailSheet, { attributes: true, attributeFilter: ['class'] });
+
+        if (detailHandle) detailHandle.addEventListener('touchstart', hideHint, { passive: true });
+        if (detailHandle) detailHandle.addEventListener('mousedown', hideHint);
+        if (rpHeroRow) rpHeroRow.addEventListener('click', hideHint);
+    }
+
+    // ── "TRY DESKTOP" BANNER — shown once per browser unless dismissed ──
+    const desktopBanner = document.getElementById('mobile-desktop-banner');
+    const desktopBannerClose = document.getElementById('mobile-desktop-banner-close');
+    const BANNER_DISMISS_KEY = 'na4t_desktop_banner_dismissed';
+    function showDesktopBannerIfNeeded() {
+        if (!desktopBanner || !isMobile()) return;
+        let dismissed = false;
+        try { dismissed = localStorage.getItem(BANNER_DISMISS_KEY) === '1'; } catch (e) { /* ignore */ }
+        if (!dismissed) {
+            desktopBanner.classList.add('show');
+            document.body.classList.add('has-desktop-banner');
+        }
+    }
+    function dismissDesktopBanner() {
+        if (desktopBanner) desktopBanner.classList.remove('show');
+        document.body.classList.remove('has-desktop-banner');
+        try { localStorage.setItem(BANNER_DISMISS_KEY, '1'); } catch (e) { /* ignore */ }
+    }
+    if (desktopBannerClose) desktopBannerClose.addEventListener('click', dismissDesktopBanner);
+    showDesktopBannerIfNeeded();
+
+    // ── RELOCATE SCORE FILTER (mood chips + slider) INTO THE HEADER ──
+    // On mobile this is the one control kept always visible — no drawer
+    // tap needed. POI + Environmental Layers stay secondary, inside the
+    // drawer. The DOM node itself (with all its existing listeners) is
+    // moved, not cloned, so nothing needs re-wiring. Moved back to its
+    // original spot if the viewport grows back to desktop size.
+    const scoreFilterSection = document.querySelector('.dashboard-bg .panel-section.sec-filter');
+    const moodSlot = document.getElementById('mobile-mood-slot');
+    const scoreFilterOriginalParent = scoreFilterSection ? scoreFilterSection.parentElement : null;
+    const scoreFilterOriginalNext   = scoreFilterSection ? scoreFilterSection.nextSibling : null;
+    function placeScoreFilterForViewport() {
+        if (!scoreFilterSection || !moodSlot || !scoreFilterOriginalParent) return;
+        if (isMobile()) {
+            if (scoreFilterSection.parentElement !== moodSlot) moodSlot.appendChild(scoreFilterSection);
+        } else if (scoreFilterSection.parentElement !== scoreFilterOriginalParent) {
+            scoreFilterOriginalParent.insertBefore(scoreFilterSection, scoreFilterOriginalNext);
+        }
+    }
+    placeScoreFilterForViewport();
+    let resizeMoveTimer = null;
+    window.addEventListener('resize', () => {
+        clearTimeout(resizeMoveTimer);
+        resizeMoveTimer = setTimeout(placeScoreFilterForViewport, 150);
+    });
+});
