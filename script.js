@@ -1562,34 +1562,55 @@ document.addEventListener('DOMContentLoaded', () => {
             padding: 8px 12px;
             box-shadow: 0 4px 16px rgba(0,0,0,0.12);
             font-family: Nunito, sans-serif;
-            pointer-events: none;
+            pointer-events: auto;
             display: none;
             max-width: 200px;
             backdrop-filter: blur(10px);
         `;
         document.querySelector('.map-wrapper').appendChild(poiTooltip);
 
-        function showPOITooltip(x, y, iconCfg, cfgLabel, name) {
-            poiTooltip.innerHTML = 
-                '<div style="font-size:10px;font-weight:700;color:' + iconCfg.color + ';margin-bottom:3px;text-transform:uppercase;letter-spacing:0.05em">' +
+        // The popup stays anchored to the POI's real map coordinate (not a
+        // frozen screen position) so it tracks correctly if the map pans or
+        // zooms while it's open, and it only closes when the user clicks
+        // its own close (×) button — never just from clicking elsewhere.
+        let poiTooltipLngLat = null;
+
+        function showPOITooltip(lngLat, iconCfg, cfgLabel, name) {
+            poiTooltipLngLat = lngLat;
+            poiTooltip.innerHTML =
+                '<div id="poi-tooltip-close" class="poi-tooltip-close" aria-label="Close" role="button"><i class="ti ti-x"></i></div>' +
+                '<div style="font-size:10px;font-weight:700;color:' + iconCfg.color + ';margin-bottom:3px;text-transform:uppercase;letter-spacing:0.05em;padding-right:16px;">' +
                 '<i class="ti ' + iconCfg.icon + '"></i> ' + cfgLabel + '</div>' +
-                '<div style="font-size:12px;font-weight:600;color:#1f2937">' + name + '</div>';
-            // Position relative to map wrapper
-            const wrapper = document.querySelector('.map-wrapper').getBoundingClientRect();
-            const tx = x - wrapper.left + 10;
-            const ty = y - wrapper.top - 60;
+                '<div style="font-size:12px;font-weight:600;color:#1f2937;padding-right:16px;">' + name + '</div>';
+            positionPOITooltip();
+            poiTooltip.style.display = 'block';
+            const closeBtn = document.getElementById('poi-tooltip-close');
+            if (closeBtn) closeBtn.addEventListener('click', e => {
+                e.stopPropagation();
+                e.preventDefault();
+                hidePOITooltip();
+            });
+        }
+
+        // Re-project the popup's stored lng/lat to screen space — called on
+        // open, and again on every map move/zoom so it keeps tracking its POI.
+        function positionPOITooltip() {
+            if (!poiTooltipLngLat) return;
+            const point = map.project(poiTooltipLngLat);
+            const tx = point.x + 10;
+            const ty = point.y - 60;
             poiTooltip.style.left = tx + 'px';
             poiTooltip.style.top  = ty + 'px';
-            poiTooltip.style.display = 'block';
         }
 
         function hidePOITooltip() {
             poiTooltip.style.display = 'none';
+            poiTooltipLngLat = null;
         }
 
-        // Close tooltip on map click or drag
-        map.on('click', () => hidePOITooltip());
-        map.on('dragstart', () => hidePOITooltip());
+        map.on('move', () => {
+            if (poiTooltip.style.display === 'block') positionPOITooltip();
+        });
 
         async function fetchPOI(type) {
             const cacheKey = currentCity + '_' + type;
@@ -1686,6 +1707,36 @@ document.addEventListener('DOMContentLoaded', () => {
             busstops:{ icon: 'ti-bus',            color: '#2563EB', bg: '#DBEAFE' },
         };
 
+        // POI markers should feel like part of the map, not fixed screen
+        // stickers — bigger as you zoom in, smaller as you zoom out.
+        // Base size is tuned for POI_BASE_ZOOM; zoom deltas scale it with a
+        // gentle exponential curve, clamped so icons stay legible at very
+        // low zooms and don't get comically huge at very high ones.
+        const POI_BASE_ZOOM  = 14;
+        const POI_BASE_SIZE  = 10;  // px diameter at POI_BASE_ZOOM
+        const POI_BASE_ICON  = 6;   // px icon font-size at POI_BASE_ZOOM
+
+        function poiSizeForZoom(zoom) {
+            const scale = Math.min(2.4, Math.max(0.55, Math.pow(1.18, zoom - POI_BASE_ZOOM)));
+            return {
+                size: Math.round(POI_BASE_SIZE * scale),
+                iconSize: +(POI_BASE_ICON * scale).toFixed(1),
+            };
+        }
+
+        // Resize every currently-visible POI marker to match the new zoom.
+        // Only touches width/height/font-size — never `transform`, since
+        // maplibregl.Marker owns that property on this element for positioning.
+        function updatePOIMarkerSizes() {
+            const { size, iconSize } = poiSizeForZoom(map.getZoom());
+            document.querySelectorAll('.poi-map-marker').forEach(el => {
+                el.style.width    = size + 'px';
+                el.style.height   = size + 'px';
+                el.style.fontSize = iconSize + 'px';
+            });
+        }
+        map.on('zoom', updatePOIMarkerSizes);
+
         function addPOILayer(type, geojson) {
             const cfg     = POI_CONFIG[type];
             const iconCfg = POI_ICONS[type];
@@ -1723,20 +1774,23 @@ document.addEventListener('DOMContentLoaded', () => {
 
                     const name = (feat.properties && feat.properties.name) || cfg.label;
 
-                    // Solid filled circle marker with Tabler icon
+                    // Solid filled circle marker with Tabler icon. Sized from
+                    // the current zoom so markers grow as you zoom in instead
+                    // of staying a fixed pixel size (see poiSizeForZoom).
+                    const { size, iconSize } = poiSizeForZoom(map.getZoom());
                     const el = document.createElement('div');
                     el.className = 'poi-map-marker';
                     el.innerHTML = `<i class="ti ${iconCfg.icon}"></i>`;
                     el.style.cssText = `
-                        width: 10px;
-                        height: 10px;
+                        width: ${size}px;
+                        height: ${size}px;
                         border-radius: 50%;
                         background: ${iconCfg.bg};
                         border: 1px solid ${iconCfg.color};
                         display: flex;
                         align-items: center;
                         justify-content: center;
-                        font-size: 6px;
+                        font-size: ${iconSize}px;
                         color: ${iconCfg.color};
                         cursor: pointer;
                         box-shadow: 0 1px 2px rgba(0,0,0,0.2);
@@ -1755,8 +1809,7 @@ document.addEventListener('DOMContentLoaded', () => {
                     el.addEventListener('click', e => {
                         e.stopPropagation();
                         e.preventDefault();
-                        const rect = el.getBoundingClientRect();
-                        showPOITooltip(rect.left + rect.width / 2, rect.top, iconCfg, cfg.label, name);
+                        showPOITooltip([lng, lat], iconCfg, cfg.label, name);
                     });
 
                     const marker = new maplibregl.Marker({ element: el, anchor: 'center' })
@@ -1793,6 +1846,7 @@ document.addEventListener('DOMContentLoaded', () => {
             });
             const clearPOI = document.getElementById('clear-poi');
             if (clearPOI) clearPOI.style.display = 'none';
+            hidePOITooltip();
         }
 
         const clearPOIBtn = document.getElementById('clear-poi-btn');
@@ -1832,6 +1886,202 @@ document.addEventListener('DOMContentLoaded', () => {
                 }
             });
         });
+
+        // =========================================================
+        // LOCATION SEARCH (OpenStreetMap Nominatim)
+        // =========================================================
+        // The search box's HTML/CSS already existed but had no JS behind
+        // it at all, so typing into it never produced suggestions.
+        (function initMapSearch() {
+            const wrap     = document.getElementById('map-search-wrap');
+            const input    = document.getElementById('map-search-input');
+            const clearBtn = document.getElementById('map-search-clear');
+            const results  = document.getElementById('map-search-results');
+            if (!wrap || !input || !results) return;
+
+            let debounceTimer = null;
+            let activeIndex   = -1;
+            let currentItems  = [];
+            let searchMarker  = null;
+            let requestSeq    = 0;
+
+            // Bias (not hard-restrict) results toward whichever city is
+            // currently shown, reusing the same bbox the POI layers use.
+            // POI_BBOX is south,west,north,east — Nominatim's viewbox wants
+            // left,top,right,bottom (minLon,maxLat,maxLon,minLat).
+            function cityViewbox() {
+                const bbox = POI_BBOX[currentCity];
+                if (!bbox) return null;
+                const [south, west, north, east] = bbox.split(',').map(Number);
+                return `${west},${north},${east},${south}`;
+            }
+
+            function escapeHtml(str) {
+                const div = document.createElement('div');
+                div.textContent = str == null ? '' : str;
+                return div.innerHTML;
+            }
+
+            function iconForResult(d) {
+                const cls = (d.class || '') + ' ' + (d.type || '');
+                if (/^highway|road|street|residential|pedestrian/.test(cls)) return 'ti-road';
+                if (/park|wood|forest|natural|leisure/.test(cls)) return 'ti-trees';
+                if (/amenity|shop|building|tourism/.test(cls)) return 'ti-building';
+                return 'ti-map-pin';
+            }
+
+            function setResultsHTML(html) {
+                results.innerHTML = html;
+                results.style.display = 'block';
+            }
+
+            function hideResults() {
+                results.style.display = 'none';
+                results.innerHTML = '';
+                activeIndex  = -1;
+                currentItems = [];
+            }
+
+            function highlightActive() {
+                results.querySelectorAll('.map-search-result-item').forEach((el, i) => {
+                    el.classList.toggle('active', i === activeIndex);
+                });
+            }
+
+            function renderResults(items) {
+                currentItems = items;
+                activeIndex  = -1;
+                if (!items.length) {
+                    setResultsHTML('<div class="map-search-result-empty">No matches found</div>');
+                    return;
+                }
+                setResultsHTML(items.map((item, i) =>
+                    `<div class="map-search-result-item" data-index="${i}">
+                        <i class="ti ${item.icon}"></i>
+                        <div>
+                            <div class="map-search-result-main">${item.mainText}</div>
+                            ${item.subText ? `<div class="map-search-result-sub">${item.subText}</div>` : ''}
+                        </div>
+                    </div>`
+                ).join(''));
+                results.querySelectorAll('.map-search-result-item').forEach(el => {
+                    el.addEventListener('click', () => selectResult(parseInt(el.dataset.index, 10)));
+                });
+            }
+
+            async function runSearch(query) {
+                const seq = ++requestSeq;
+                setResultsHTML('<div class="map-search-result-loading">Searching…</div>');
+                try {
+                    const params = new URLSearchParams({
+                        format: 'jsonv2',
+                        q: query,
+                        addressdetails: '1',
+                        limit: '6',
+                    });
+                    const viewbox = cityViewbox();
+                    if (viewbox) {
+                        params.set('viewbox', viewbox);
+                        params.set('bounded', '0'); // bias only, don't exclude matches outside it
+                    }
+                    const resp = await fetch('https://nominatim.openstreetmap.org/search?' + params.toString(), {
+                        headers: { 'Accept-Language': 'en' },
+                    });
+                    if (seq !== requestSeq) return; // superseded by a newer keystroke
+                    if (!resp.ok) throw new Error('status ' + resp.status);
+                    const data = await resp.json();
+                    if (seq !== requestSeq) return;
+                    renderResults(data.map(d => {
+                        const parts = (d.display_name || '').split(',').map(s => s.trim());
+                        return {
+                            lat: parseFloat(d.lat),
+                            lon: parseFloat(d.lon),
+                            mainText: escapeHtml(parts[0] || d.display_name),
+                            subText: escapeHtml(parts.slice(1, 4).join(', ')),
+                            icon: iconForResult(d),
+                            boundingbox: d.boundingbox,
+                        };
+                    }));
+                } catch (err) {
+                    if (seq !== requestSeq) return;
+                    console.warn('Location search failed:', err.message);
+                    setResultsHTML('<div class="map-search-result-empty">Search unavailable — try again</div>');
+                }
+            }
+
+            function selectResult(index) {
+                const item = currentItems[index];
+                if (!item) return;
+                input.value = item.mainText;
+                hideResults();
+                clearBtn.style.display = 'flex';
+
+                if (searchMarker) { searchMarker.remove(); searchMarker = null; }
+                const el = document.createElement('div');
+                el.className = 'map-search-marker';
+                searchMarker = new maplibregl.Marker({ element: el, anchor: 'bottom' })
+                    .setLngLat([item.lon, item.lat])
+                    .addTo(map);
+
+                const bb = item.boundingbox;
+                if (bb && bb.length === 4) {
+                    const [south, north, west, east] = bb.map(Number);
+                    map.fitBounds([[west, south], [east, north]], { padding: 70, maxZoom: 17, duration: 900 });
+                } else {
+                    map.flyTo({ center: [item.lon, item.lat], zoom: 16, essential: true });
+                }
+            }
+
+            input.addEventListener('input', () => {
+                const q = input.value.trim();
+                clearBtn.style.display = q ? 'flex' : 'none';
+                clearTimeout(debounceTimer);
+                if (q.length < 3) { hideResults(); return; }
+                debounceTimer = setTimeout(() => runSearch(q), 350);
+            });
+
+            input.addEventListener('focus', () => {
+                wrap.classList.add('focused');
+                if (currentItems.length) results.style.display = 'block';
+            });
+
+            input.addEventListener('keydown', e => {
+                const items = results.querySelectorAll('.map-search-result-item');
+                if (results.style.display !== 'block' || !items.length) return;
+                if (e.key === 'ArrowDown') {
+                    e.preventDefault();
+                    activeIndex = Math.min(activeIndex + 1, items.length - 1);
+                    highlightActive();
+                    items[activeIndex].scrollIntoView({ block: 'nearest' });
+                } else if (e.key === 'ArrowUp') {
+                    e.preventDefault();
+                    activeIndex = Math.max(activeIndex - 1, 0);
+                    highlightActive();
+                    items[activeIndex].scrollIntoView({ block: 'nearest' });
+                } else if (e.key === 'Enter') {
+                    e.preventDefault();
+                    selectResult(activeIndex >= 0 ? activeIndex : 0);
+                } else if (e.key === 'Escape') {
+                    hideResults();
+                    input.blur();
+                }
+            });
+
+            clearBtn.addEventListener('click', () => {
+                input.value = '';
+                clearBtn.style.display = 'none';
+                hideResults();
+                if (searchMarker) { searchMarker.remove(); searchMarker = null; }
+                input.focus();
+            });
+
+            document.addEventListener('click', e => {
+                if (!wrap.contains(e.target)) {
+                    wrap.classList.remove('focused');
+                    hideResults();
+                }
+            });
+        })();
     });
 
     } catch (e) {

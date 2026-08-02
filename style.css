@@ -2743,3 +2743,34 @@ body.dark-mode .env-legend-row { color: #cbd5e1; }
 }
 body.dark-mode .map-desktop-tip.show { background: #1c2836 !important; color: #93c5fd !important; border-color: rgba(147,197,253,0.3) !important; }
 body.dark-mode .map-desktop-tip.show button { background: rgba(147,197,253,0.15); color: #93c5fd; }
+
+/* POI markers (schools/sports/parks/bus stops) — base look is set inline in
+   JS (color varies per POI type), but size is animated here so zoom-driven
+   resizing (see updatePOIMarkerSizes in script.js) feels smooth instead of
+   snapping between sizes. */
+.poi-map-marker {
+    transition: width 0.15s ease, height 0.15s ease, font-size 0.15s ease;
+}
+
+/* Close (×) button inside the POI popup. The popup now stays open until the
+   user explicitly dismisses it with this button, instead of auto-closing on
+   any map click. */
+.poi-tooltip-close {
+    position: absolute;
+    top: 6px;
+    right: 6px;
+    width: 16px;
+    height: 16px;
+    border-radius: 50%;
+    background: rgba(0,0,0,0.06);
+    color: #6b7280;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 9px;
+    cursor: pointer;
+    pointer-events: auto;
+}
+.poi-tooltip-close:hover { background: rgba(0,0,0,0.12); color: #374151; }
+body.dark-mode .poi-tooltip-close { background: rgba(255,255,255,0.1); color: #9ca3af; }
+body.dark-mode .poi-tooltip-close:hover { background: rgba(255,255,255,0.18); color: #e5e7eb; }
