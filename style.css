@@ -27,14 +27,14 @@ body { margin:0; font-family:"Nunito",sans-serif; background:linear-gradient(135
 
 /* HEADER */
 .header-window { position:absolute; top:20px; left:20px; width:280px; z-index:20; background:var(--panel); backdrop-filter:blur(18px); -webkit-backdrop-filter:blur(18px); border:1px solid var(--border); border-radius:var(--radius); box-shadow:var(--shadow); }
-.header-content { display:flex; align-items:center; gap:12px; padding:14px 18px; }
+.header-content { display:flex; align-items:center; gap:6px; padding:14px 18px; }
 .header-logo { height:38px; width:auto; flex-shrink:0; }
 .header-title { font-size:15px; font-weight:700; color:var(--text); line-height:1.2; }
 .header-sub { font-size:11px; color:var(--text-muted); margin-top:2px; }
 
 /* LEFT PANEL */
 .dashboard-bg { position:absolute; top:96px; left:20px; width:280px; bottom:20px; z-index:15; background:var(--panel); backdrop-filter:blur(18px); -webkit-backdrop-filter:blur(18px); border:1px solid var(--border); border-radius:var(--radius); box-shadow:var(--shadow); }
-.panel-content { height:100%; overflow-y:auto; padding:14px 14px; }
+.panel-content { height:100%; overflow-y:auto; overflow-x:hidden; padding:14px 14px; }
 .panel-content::-webkit-scrollbar { width:4px; }
 .panel-content::-webkit-scrollbar-thumb { background:rgba(0,0,0,0.08); border-radius:999px; }
 .panel-section { margin-bottom:16px; }
@@ -75,7 +75,32 @@ body.dark-mode .panel-section.sec-city    h3 { background:rgba(91,33,182,0.18); 
 .mode-btn.active-bike i, .mode-btn.active-bike span { color:#0C447C; }
 .mode-btn.active-city { background:#EDE9FE; border-color:#8B5CF6; }
 .mode-btn.active-city i, .mode-btn.active-city span { color:#5B21B6; }
+
+/* City selector — kept as a distinct pill shape (vs. the square Walking/
+   Biking cards), but resting state is neutral: only the actively
+   selected city should read as "colored". */
+.mode-btn[data-city] {
+    border-radius: 999px;
+    background: rgba(255,255,255,0.5);
+    border-color: rgba(120,110,95,0.18);
+}
+.mode-btn[data-city] i, .mode-btn[data-city] span { color: var(--text-muted); }
+.mode-btn[data-city]:hover { background: rgba(255,255,255,0.8); }
+body.dark-mode .mode-btn[data-city] {
+    background: rgba(255,255,255,0.05);
+    border-color: rgba(255,255,255,0.12);
+}
+body.dark-mode .mode-btn[data-city] i, body.dark-mode .mode-btn[data-city] span { color: var(--text-muted); }
 .city-note { font-size:10.5px; line-height:1.4; color:var(--text-muted); margin:6px 2px 0; }
+
+/* The selected city — needs a selector *more specific* than plain
+   .mode-btn[data-city] above; otherwise (same specificity, later rule)
+   it silently wins and both city buttons look identical regardless of
+   which is actually active. This is exactly that bug, fixed. */
+.mode-btn[data-city].active-city { background:#EDE9FE; border-color:#8B5CF6; }
+.mode-btn[data-city].active-city i, .mode-btn[data-city].active-city span { color:#5B21B6; }
+body.dark-mode .mode-btn[data-city].active-city { background: rgba(139,92,246,0.22); border-color: #8B5CF6; }
+body.dark-mode .mode-btn[data-city].active-city i, body.dark-mode .mode-btn[data-city].active-city span { color: #c4b5fd; }
 
 /* FACE CHIPS */
 .quality-faces { display:grid; grid-template-columns:repeat(5,1fr); gap:5px; margin-bottom:10px; }
@@ -1971,33 +1996,133 @@ body.dark-mode .map-legend { background: rgba(28,32,40,0.95); border-color: rgba
 body.dark-mode .ml-header { border-top-color: rgba(255,255,255,0.07); }
 body.dark-mode .ml-body { border-bottom-color: rgba(255,255,255,0.07); }
 
-/* Location badge — top left of map */
-.map-location-badge {
+/* Location search box — top left of map, OSM-style search.
+   Muted lavender/teal palette (not the score-system red) so it reads as
+   its own friendly little tool rather than a warning or a score color. */
+.map-search-wrap {
+    position: relative;
     display: flex;
     align-items: center;
     gap: 6px;
-    background: rgba(255,252,248,0.95);
+    background: rgba(255,252,248,0.96);
     backdrop-filter: blur(14px);
     -webkit-backdrop-filter: blur(14px);
     border: 1px solid rgba(120,110,95,0.15);
     border-radius: 99px;
-    padding: 5px 12px 5px 9px;
+    padding: 7px 10px 7px 12px;
     box-shadow: 0 4px 16px rgba(15,23,42,0.10);
+    width: 190px;
+    max-width: 55vw;
+    transition: width 0.2s ease, box-shadow 0.2s ease;
+}
+.map-search-wrap.focused {
+    width: 260px;
+    max-width: 72vw;
+    box-shadow: 0 6px 22px rgba(15,23,42,0.16);
+}
+.map-search-icon { font-size: 14px; color: #8B93E8; flex-shrink: 0; }
+.map-search-input {
+    border: none;
+    outline: none;
+    background: transparent;
     font-family: "Nunito", sans-serif;
     font-size: 12px;
-    font-weight: 700;
+    font-weight: 600;
     color: #374151;
-    letter-spacing: 0.01em;
-    pointer-events: none;
+    flex: 1;
+    min-width: 0;
+    padding: 0;
 }
-.map-location-badge i {
-    font-size: 14px;
-    color: #E24B4A;
+.map-search-input::placeholder { color: #9ca3af; font-weight: 600; }
+body.dark-mode .map-search-input { color: #e5e7eb; }
+.map-search-clear {
+    flex-shrink: 0;
+    width: 18px; height: 18px;
+    border: none;
+    border-radius: 50%;
+    background: rgba(0,0,0,0.07);
+    color: #6b7280;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    font-size: 9px;
+    padding: 0;
 }
-body.dark-mode .map-location-badge {
-    background: rgba(28,32,40,0.95);
+.map-search-clear:hover { background: rgba(0,0,0,0.12); }
+body.dark-mode .map-search-wrap {
+    background: rgba(28,32,40,0.96);
     border-color: rgba(255,255,255,0.1);
-    color: #e5e7eb;
+}
+body.dark-mode .map-search-clear { background: rgba(255,255,255,0.08); color: #9ca3af; }
+body.dark-mode .map-search-clear:hover { background: rgba(255,255,255,0.14); }
+
+.map-search-results {
+    position: absolute;
+    top: calc(100% + 8px);
+    left: 0;
+    min-width: 100%;
+    width: max-content;
+    max-width: min(340px, 82vw);
+    max-height: 260px;
+    overflow-y: auto;
+    background: rgba(255,252,248,0.98);
+    backdrop-filter: blur(14px);
+    -webkit-backdrop-filter: blur(14px);
+    border: 1px solid rgba(120,110,95,0.15);
+    border-radius: 13px;
+    box-shadow: 0 10px 28px rgba(15,23,42,0.16);
+    z-index: 30;
+}
+body.dark-mode .map-search-results {
+    background: rgba(28,32,40,0.98);
+    border-color: rgba(255,255,255,0.1);
+}
+.map-search-result-item {
+    display: flex;
+    align-items: flex-start;
+    gap: 8px;
+    padding: 9px 12px;
+    font-size: 12px;
+    color: #374151;
+    cursor: pointer;
+    border-bottom: 1px solid rgba(120,110,95,0.08);
+    line-height: 1.4;
+}
+.map-search-result-item:last-child { border-bottom: none; }
+.map-search-result-item:hover { background: rgba(139,147,232,0.08); }
+.map-search-result-item i { font-size: 14px; color: #8B93E8; flex-shrink: 0; margin-top: 1px; }
+.map-search-result-main { font-weight: 700; color: #1f2937; }
+.map-search-result-sub { font-size: 10.5px; color: #6b7280; margin-top: 1px; }
+body.dark-mode .map-search-result-item { color: #e5e7eb; border-bottom-color: rgba(255,255,255,0.07); }
+body.dark-mode .map-search-result-item:hover { background: rgba(255,255,255,0.06); }
+body.dark-mode .map-search-result-main { color: #f3f4f6; }
+body.dark-mode .map-search-result-sub { color: #9ca3af; }
+
+.map-search-result-empty, .map-search-result-loading {
+    padding: 12px;
+    font-size: 11.5px;
+    color: #6b7280;
+    text-align: center;
+}
+body.dark-mode .map-search-result-empty, body.dark-mode .map-search-result-loading { color: #9ca3af; }
+
+/* Marker dropped for a selected search result — one simple, soft
+   teardrop shape. No nested dots/rings. */
+.map-search-marker {
+    width: 22px;
+    height: 22px;
+    background: #A5ABEE;
+    border: 2.5px solid #ffffff;
+    border-radius: 50% 50% 50% 0;
+    transform: rotate(-45deg);
+    box-shadow: 0 3px 8px rgba(0,0,0,0.22);
+    animation: searchMarkerPop 0.35s cubic-bezier(0.34,1.56,0.64,1);
+}
+@keyframes searchMarkerPop {
+    0%   { transform: rotate(-45deg) scale(0); }
+    70%  { transform: rotate(-45deg) scale(1.15); }
+    100% { transform: rotate(-45deg) scale(1); }
 }
 
 
@@ -2265,9 +2390,11 @@ body.dark-mode .poi-loading {
 .env-opacity-row {
     display: flex;
     align-items: center;
-    gap: 8px;
+    gap: 6px;
     padding: 4px 0;
     margin-top: 2px;
+    width: 100%;
+    max-width: 100%;
 }
 .env-opacity-label {
     font-size: 10px;
@@ -2276,11 +2403,16 @@ body.dark-mode .poi-loading {
     white-space: nowrap;
     display: flex;
     align-items: center;
-    gap: 4px;
+    gap: 3px;
+    flex-shrink: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
 }
 .env-opacity-label i { font-size: 12px; }
 .env-opacity-slider {
     flex: 1;
+    min-width: 0;
+    max-width: 100%;
     height: 4px;
     accent-color: #4ade80;
     cursor: pointer;
@@ -2289,7 +2421,8 @@ body.dark-mode .poi-loading {
     font-size: 10px;
     font-weight: 600;
     color: var(--text-muted, #6b7280);
-    min-width: 28px;
+    min-width: 26px;
+    flex-shrink: 0;
     text-align: right;
 }
 
@@ -2376,3 +2509,235 @@ body.dark-mode .env-legend-row { color: #cbd5e1; }
     box-shadow: 0 4px 14px rgba(0,0,0,0.2);
     transform: translate(-50%, calc(-100% - 10px));
 }
+
+/* ══════════════════════════════════════════════════════════════════
+   MOBILE LAYOUT
+   - Top bar: logo + title only
+   - Map: full screen behind everything
+   - ONE bottom sheet with a bottom app bar (tab switcher):
+       "Pick a Road"  -> road detail (relocated from #detail-panel)
+       "Perspective"  -> city switch, mode, score filter, POI,
+                         environmental layers (relocated from
+                         .dashboard-bg .panel-content)
+   Content is physically MOVED by JS only when isMobile() — the
+   original desktop elements/CSS are never modified, only hidden here.
+   ══════════════════════════════════════════════════════════════════ */
+@media (max-width: 1024px) {
+
+    /* Map fills the whole screen; everything else floats above it */
+    #map-container { height: 100vh; }
+    .map-wrapper {
+        position: fixed;
+        top: 0; left: 0; right: 0; bottom: 0;
+        border-radius: 0;
+    }
+
+    /* ── TOP BAR — logo + title only, nothing else ── */
+    .header-window {
+        position: fixed;
+        top: 0; left: 0; right: 0;
+        width: auto;
+        z-index: 45;
+        border-radius: 0 0 16px 16px;
+        box-shadow: 0 4px 18px rgba(15,23,42,0.10);
+    }
+    .header-content { padding: 10px 14px; gap: 8px; }
+    .header-logo { height: 28px; }
+    .header-title { font-size: 13px; }
+    .header-sub { font-size: 9.5px; margin-top: 0; }
+
+    /* ── The ORIGINAL desktop floating panels are hidden — their content
+       gets relocated into the mobile sheet below by JS. Hidden here too
+       as a safety net in case JS hasn't run yet on first paint. ── */
+    .dashboard-bg { display: none; }
+    .detail-panel { display: none; }
+
+    /* ── MAP CONTROLS — repositioned to sit below the (now single-row)
+       top bar. Export button AND the Score Legend card are both removed
+       on mobile/tablet — the legend's job is taken over by the floating,
+       always-visible score filter below, which is more useful anyway. ── */
+    .map-top-left-row { top: 68px; left: 10px; }
+    .map-fact-card { top: 108px; left: 10px; width: 200px; max-width: calc(100vw - 20px); }
+    .map-hint { display: none; } /* hover hint makes no sense on touch */
+    .map-export-btn { display: none; }
+    .map-br-stack { display: none; } /* Score Legend removed on mobile/tablet */
+    .map-plain-attrib { bottom: 102px; right: 10px; font-size: 8px; }
+
+    /* Full desktop credits footer (logo row) is too cluttered for a
+       phone — hide it; a compact line lives in the Controls pane. */
+    .credits-footer { display: none; }
+
+    /* ── "WORKS BETTER ON DESKTOP" TIP — a plain floating toast, on
+    /* ── "WORKS BETTER ON DESKTOP" TIP — styling lives OUTSIDE this
+       media query entirely now (see bottom of file), so there's zero
+       chance of the CSS @media match disagreeing with JS's matchMedia
+       check on some device. ── */
+
+    /* ── INTRO OVERLAY — let content flow naturally so the credit line
+       never overlaps the "Let's explore" button on short viewports ── */
+    .intro-overlay {
+        padding-top: 7vh;
+        padding-bottom: 24px;
+        overflow-y: auto;
+        justify-content: flex-start;
+    }
+    .intro-card { width: 88vw; padding: 22px 18px 20px; }
+    .intro-credit {
+        position: static;
+        transform: none;
+        margin-top: 18px;
+        white-space: normal;
+        text-align: center;
+    }
+
+    /* ══════════ THE BOTTOM SHEET ══════════ */
+    .mobile-sheet {
+        position: fixed;
+        left: 0; right: 0; bottom: 0;
+        z-index: 55;
+        display: flex;
+        flex-direction: column;
+        background: var(--panel);
+        backdrop-filter: blur(16px);
+        -webkit-backdrop-filter: blur(16px);
+        border-radius: 18px 18px 0 0;
+        box-shadow: 0 -6px 24px rgba(15,23,42,0.14);
+        height: 70vh;
+        max-height: 70vh;
+        /* Collapsed by default: only the handle + tab bar show. Height
+           above is a definite value (not auto), which matters — a
+           flex:1 child later relies on that to size correctly. */
+        transform: translateY(calc(100% - 108px));
+        transition: transform 0.32s cubic-bezier(0.32,0.72,0,1);
+    }
+    .mobile-sheet.dragging  { transition: none; }
+    .mobile-sheet.expanded  { transform: translateY(0); }
+
+    .mobile-sheet-handle {
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        padding: 9px 0 4px;
+        flex-shrink: 0;
+        cursor: grab;
+        touch-action: none;
+    }
+    .mobile-sheet-handle::before {
+        content: '';
+        width: 38px; height: 4px;
+        border-radius: 99px;
+        background: rgba(120,110,95,0.3);
+    }
+    body.dark-mode .mobile-sheet-handle::before { background: rgba(255,255,255,0.25); }
+
+    /* Bottom app bar — the tab switcher, always visible even collapsed */
+    .mobile-tabbar {
+        display: flex;
+        flex-shrink: 0;
+        gap: 6px;
+        padding: 2px 12px 10px;
+        border-bottom: 1px solid var(--border);
+    }
+    .mobile-tab {
+        flex: 1;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 6px;
+        border: none;
+        background: rgba(0,0,0,0.035);
+        color: var(--text-muted);
+        border-radius: 99px;
+        padding: 8px 10px;
+        font-family: "Nunito", sans-serif;
+        font-size: 12px;
+        font-weight: 700;
+        cursor: pointer;
+        transition: var(--transition);
+    }
+    .mobile-tab i { font-size: 15px; }
+    .mobile-tab.active { background: #EDE9FE; color: #5B21B6; }
+    body.dark-mode .mobile-tab { background: rgba(255,255,255,0.06); }
+
+    .mobile-sheet-body {
+        flex: 1 1 auto;
+        min-height: 0;
+        position: relative;
+    }
+    .mobile-pane {
+        display: none;
+        height: 100%;
+        overflow-y: auto;
+    }
+    .mobile-pane.active { display: block; }
+    /* Perspective pane reuses .panel-content styling for its sections —
+       just drop the fixed height it had as a direct child of the old
+       .dashboard-bg, since here it should fill .mobile-pane instead. */
+    #mobile-pane-controls .panel-content { height: auto; padding: 14px; }
+
+    .mobile-credit-line {
+        display: block;
+        font-size: 9.5px;
+        color: var(--text-muted);
+        text-align: center;
+        padding: 10px 4px 4px;
+        border-top: 1px solid var(--border);
+        margin-top: 10px;
+    }
+}
+
+/* Mobile-only elements stay hidden on desktop — its own media query so
+   it can never lose a cascade fight against the rules above regardless
+   of source order (the exact bug that caused problems last time). */
+@media (min-width: 1025px) {
+    .mobile-sheet,
+    .mobile-credit-line { display: none; }
+}
+
+/* ══════════════════════════════════════════════════════════════════
+   "WORKS BETTER ON DESKTOP" TIP — deliberately UNCONDITIONAL CSS,
+   outside every @media query. Visibility is controlled ENTIRELY by
+   JS adding/removing the .show class (JS already checks screen width
+   itself before adding it) — this removes any possibility of a CSS
+   @media match disagreeing with the JS check on some device/browser.
+   ══════════════════════════════════════════════════════════════════ */
+.map-desktop-tip {
+    display: none !important;
+}
+.map-desktop-tip.show {
+    display: flex !important;
+    position: fixed !important;
+    bottom: 14px !important;
+    left: 12px !important;
+    right: 12px !important;
+    top: auto !important;
+    z-index: 2147483000 !important;
+    align-items: center !important;
+    gap: 8px !important;
+    padding: 10px 12px !important;
+    font-size: 11px !important;
+    font-weight: 600 !important;
+    color: #185FA5 !important;
+    background: #E6F1FB !important;
+    border: 1px solid rgba(24,95,165,0.25) !important;
+    border-radius: 14px !important;
+    box-shadow: 0 6px 20px rgba(15,23,42,0.22) !important;
+    font-family: "Nunito", sans-serif !important;
+}
+.map-desktop-tip.show i:first-child { font-size: 14px; flex-shrink: 0; }
+.map-desktop-tip.show span { flex: 1; line-height: 1.3; }
+.map-desktop-tip.show button {
+    flex-shrink: 0;
+    width: 22px; height: 22px;
+    border: none;
+    border-radius: 50%;
+    background: rgba(24,95,165,0.12);
+    color: #185FA5;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    font-size: 11px;
+}
+body.dark-mode .map-desktop-tip.show { background: #1c2836 !important; color: #93c5fd !important; border-color: rgba(147,197,253,0.3) !important; }
+body.dark-mode .map-desktop-tip.show button { background: rgba(147,197,253,0.15); color: #93c5fd; }

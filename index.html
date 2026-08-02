@@ -26,7 +26,7 @@
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;500;600;700;800&display=swap" rel="stylesheet">
     <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
-    <link rel="stylesheet" href="./style.css?v=8">
+    <link rel="stylesheet" href="./style.css?v=17">
 </head>
 <body>
 
@@ -690,6 +690,18 @@
 
 <div id="map-container">
 
+    <!-- MOBILE/TABLET ONLY: reminder the full toolset lives on a bigger
+         screen. Dismissible, remembered via localStorage. Sits as a
+         sibling of the header (not inside .map-wrapper) — .map-wrapper
+         is a positioned element with its own z-index, which creates a
+         stacking context that would otherwise trap this banner below
+         the header regardless of the banner's own z-index. -->
+    <div class="map-desktop-tip" id="map-desktop-tip">
+        <i class="ti ti-device-desktop"></i>
+        <span>For deeper exploration, this dashboard works best on a larger screen.</span>
+        <button id="map-desktop-tip-close" aria-label="Dismiss" type="button"><i class="ti ti-x"></i></button>
+    </div>
+
     <!-- HEADER -->
     <div class="header-window">
         <div class="header-content">
@@ -720,10 +732,10 @@
                 <h3><i class="ti ti-map-pin"></i> Choose a city</h3>
                 <div class="mode-btns">
                     <div class="mode-btn active-city" data-city="salzburg">
-                        <i class="ti ti-map-2"></i><span>Salzburg</span>
+                        <i class="ti ti-map-pin"></i><span>Salzburg</span>
                     </div>
                     <div class="mode-btn" data-city="olomouc">
-                        <i class="ti ti-map-2"></i><span>Olomouc</span>
+                        <i class="ti ti-map-pin"></i><span>Olomouc</span>
                     </div>
                 </div>
                 <p class="city-note" id="city-note" style="display:none;">Environmental Layers (Land Use, Street Trees) are currently available for Salzburg only.</p>
@@ -815,13 +827,18 @@
                     <div class="env-legend-row"><div class="env-legend-swatch" style="background:#fb7185"></div><span>Construction / extraction</span></div>
                     <div class="env-legend-row"><div class="env-legend-swatch" style="background:#e2e8f0"></div><span>Other / unused land</span></div>
                 </div>
-                <div class="env-legend" id="stl-panel-legend" style="display:none;">
-                    <div class="env-legend-row"><div class="env-legend-swatch" style="background:#5b7a4f"></div><span>Street tree canopy (Copernicus 2021)</span></div>
-                </div>
                 <div class="env-opacity-row" id="env-opacity-row" style="display:none;">
                     <label class="env-opacity-label"><i class="ti ti-adjustments"></i> Opacity</label>
                     <input type="range" class="env-opacity-slider" id="env-opacity-slider" min="10" max="80" value="35">
                     <span class="env-opacity-value" id="env-opacity-value">35%</span>
+                </div>
+                <div class="env-legend" id="stl-panel-legend" style="display:none;">
+                    <div class="env-legend-row"><div class="env-legend-swatch" style="background:#5b7a4f"></div><span>Street tree canopy (Copernicus 2021)</span></div>
+                </div>
+                <div class="env-opacity-row" id="env-opacity-row-stl" style="display:none;">
+                    <label class="env-opacity-label"><i class="ti ti-adjustments"></i> Opacity</label>
+                    <input type="range" class="env-opacity-slider" id="env-opacity-slider-stl" min="10" max="100" value="75">
+                    <span class="env-opacity-value" id="env-opacity-value-stl">75%</span>
                 </div>
             </div>
 
@@ -841,11 +858,14 @@
             <i class="ti ti-hand-click"></i>
             <span>Hover to preview · Click to pin details</span>
         </div>
-        <!-- Location badge + curious button inline -->
+
+        <!-- Location search (OpenStreetMap Nominatim) + curious button -->
         <div class="map-top-left-row">
-            <div class="map-location-badge" id="map-location-badge">
-                <i class="ti ti-map-pin"></i>
-                <span id="map-location-text">Salzburg, Austria</span>
+            <div class="map-search-wrap" id="map-search-wrap">
+                <i class="ti ti-search map-search-icon"></i>
+                <input type="text" id="map-search-input" class="map-search-input" placeholder="Search location…" autocomplete="off" spellcheck="false">
+                <button id="map-search-clear" class="map-search-clear" style="display:none;" aria-label="Clear search" type="button"><i class="ti ti-x"></i></button>
+                <div class="map-search-results" id="map-search-results" style="display:none;"></div>
             </div>
             <div class="map-curious-btn" id="map-curious-btn" title="City insights">
                 <svg viewBox="0 0 24 24" width="16" height="16" fill="none" xmlns="http://www.w3.org/2000/svg">
@@ -1058,6 +1078,28 @@
         </div>
     </div>
 
+    <!-- MOBILE ONLY: single bottom sheet with a bottom app bar to switch
+         between "Controls" (city-level controls, relocated here from
+         .dashboard-bg .panel-content) and "Pick a Road" (road detail,
+         relocated here from #detail-panel above). Content is MOVED by JS
+         (isMobile() only), not duplicated — desktop DOM/CSS stays
+         completely untouched. -->
+    <div class="mobile-sheet" id="mobile-sheet">
+        <div class="mobile-sheet-handle" id="mobile-sheet-handle"></div>
+        <div class="mobile-tabbar" id="mobile-tabbar">
+            <button class="mobile-tab" data-tab="controls" type="button">
+                <i class="ti ti-layers-intersect"></i><span>Controls</span>
+            </button>
+            <button class="mobile-tab active" data-tab="road" type="button">
+                <i class="ti ti-map-pin"></i><span>Pick a Road</span>
+            </button>
+        </div>
+        <div class="mobile-sheet-body">
+            <div class="mobile-pane" id="mobile-pane-controls"></div>
+            <div class="mobile-pane active" id="mobile-pane-road"></div>
+        </div>
+    </div>
+
     <!-- CREDITS FOOTER -->
     <div class="credits-footer" id="credits-footer">
 
@@ -1093,6 +1135,6 @@
     </div>
 
 </div><!-- end #map-container -->
-<script src="./script.js?v=34"></script>
+<script src="./script.js?v=45"></script>
 </body>
 </html>
