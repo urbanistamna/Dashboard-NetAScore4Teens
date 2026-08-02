@@ -233,6 +233,138 @@ document.addEventListener('DOMContentLoaded', () => {
 
     try {
 
+    // =========================================================
+    // MOBILE BOTTOM SHEET
+    // =========================================================
+    // The HTML/CSS for the mobile bottom sheet already existed (handle,
+    // tab bar, .expanded / .dragging classes) but had NO JavaScript behind
+    // it at all: nothing ever moved the panel content into it, nothing
+    // switched tabs, and nothing listened for touch drags — so on a phone
+    // it just sat there permanently collapsed and empty ("jammed").
+    const MOBILE_BREAKPOINT = 1024; // matches the CSS @media (max-width:1024px) block
+    function isMobile() {
+        return window.matchMedia(`(max-width: ${MOBILE_BREAKPOINT}px)`).matches;
+    }
+
+    let mobileSheetReady   = false;
+    let setMobileTabActive = null; // assigned once the sheet is initialized
+    let expandMobileSheet  = null;
+    let collapseMobileSheet = null;
+
+    function initMobileSheet() {
+        if (mobileSheetReady) return;
+        const sheet   = document.getElementById('mobile-sheet');
+        const handle  = document.getElementById('mobile-sheet-handle');
+        const tabbar  = document.getElementById('mobile-tabbar');
+        const roadPane     = document.getElementById('mobile-pane-road');
+        const controlsPane = document.getElementById('mobile-pane-controls');
+        const panelContent = document.querySelector('.dashboard-bg .panel-content');
+        const detailPanel  = document.getElementById('detail-panel');
+        if (!sheet || !handle || !tabbar || !roadPane || !controlsPane) return;
+        mobileSheetReady = true;
+
+        // ── 1) Physically relocate the real desktop panel content into the
+        // sheet's panes (moved, not cloned, so all the existing IDs that
+        // showDetail()/showEmpty()/the controls all read from keep working
+        // completely unchanged no matter which parent they live under). ──
+        if (panelContent && controlsPane.childElementCount === 0) {
+            controlsPane.appendChild(panelContent);
+        }
+        if (detailPanel && roadPane.childElementCount === 0) {
+            while (detailPanel.firstChild) roadPane.appendChild(detailPanel.firstChild);
+        }
+
+        // ── 2) Tab switching ──
+        const tabs  = [...tabbar.querySelectorAll('.mobile-tab')];
+        const panes = { controls: controlsPane, road: roadPane };
+        function setTab(name) {
+            tabs.forEach(t => t.classList.toggle('active', t.dataset.tab === name));
+            Object.entries(panes).forEach(([key, el]) => el.classList.toggle('active', key === name));
+        }
+        setMobileTabActive = setTab;
+        tabs.forEach(tab => {
+            tab.addEventListener('click', () => {
+                setTab(tab.dataset.tab);
+                expand();
+            });
+        });
+
+        // ── 3) Expand / collapse ──
+        function expand()   { sheet.classList.add('expanded'); }
+        function collapse() { sheet.classList.remove('expanded'); }
+        expandMobileSheet   = expand;
+        collapseMobileSheet = collapse;
+
+        // ── 4) Drag-to-resize from the handle (touch + mouse, so it also
+        // works with mouse-emulated touch in devtools while testing) ──
+        const COLLAPSED_VISIBLE = 108; // must match CSS: translateY(calc(100% - 108px))
+        let dragStartY      = 0;
+        let dragStartOffset = 0;
+        let dragMoved       = false;
+        let dragging        = false;
+
+        function clientY(e) { return e.touches ? e.touches[0].clientY : e.clientY; }
+        function maxOffset() { return sheet.offsetHeight - COLLAPSED_VISIBLE; }
+
+        function dragStart(e) {
+            dragging  = true;
+            dragMoved = false;
+            dragStartY = clientY(e);
+            dragStartOffset = sheet.classList.contains('expanded') ? 0 : maxOffset();
+            sheet.classList.add('dragging');
+            document.addEventListener('touchmove', dragMove, { passive: false });
+            document.addEventListener('touchend',  dragEnd);
+            document.addEventListener('touchcancel', dragEnd);
+            document.addEventListener('mousemove', dragMove);
+            document.addEventListener('mouseup',   dragEnd);
+        }
+
+        function dragMove(e) {
+            if (!dragging) return;
+            const dy = clientY(e) - dragStartY;
+            if (Math.abs(dy) > 6) dragMoved = true;
+            if (e.cancelable) e.preventDefault();
+            const next = Math.min(maxOffset(), Math.max(0, dragStartOffset + dy));
+            sheet.style.transform = `translateY(${next}px)`;
+        }
+
+        function dragEnd() {
+            if (!dragging) return;
+            dragging = false;
+            document.removeEventListener('touchmove', dragMove);
+            document.removeEventListener('touchend',  dragEnd);
+            document.removeEventListener('touchcancel', dragEnd);
+            document.removeEventListener('mousemove', dragMove);
+            document.removeEventListener('mouseup',   dragEnd);
+            sheet.classList.remove('dragging');
+
+            if (!dragMoved) {
+                // A plain tap on the handle — just toggle open/closed.
+                sheet.style.transform = '';
+                sheet.classList.toggle('expanded');
+                return;
+            }
+            // Snap to whichever end the drag ended closer to.
+            const match   = /translateY\(([-\d.]+)px\)/.exec(sheet.style.transform);
+            const current = match ? parseFloat(match[1]) : dragStartOffset;
+            sheet.style.transform = '';
+            sheet.classList.toggle('expanded', current < maxOffset() * 0.4);
+        }
+
+        handle.addEventListener('touchstart', dragStart, { passive: true });
+        handle.addEventListener('mousedown',  dragStart);
+    }
+
+    // Move content in only when we're actually on a mobile layout — the
+    // desktop panels must keep their content when the sheet isn't in use.
+    if (isMobile()) initMobileSheet();
+    let mobileLayoutState = isMobile();
+    window.addEventListener('resize', () => {
+        const nowMobile = isMobile();
+        if (nowMobile && !mobileLayoutState) initMobileSheet();
+        mobileLayoutState = nowMobile;
+    });
+
     // ── CASE STUDY CITIES ─────────────────────────────────────
     // Each entry points at its own hosted .pmtiles tile source, generated
     // via the same NetAScore → tippecanoe pipeline (see README_tile_conversion.md),
@@ -1499,12 +1631,23 @@ document.addEventListener('DOMContentLoaded', () => {
                 // Second click on same road = deselect
                 setPinned(null);
                 setHighlight(null);
+                showEmpty();
             } else {
                 setPinned(props);
                 setHighlight(osmId);
+                // Show it right away on tap — don't rely solely on the
+                // desktop-only mousemove/hover handler below, which is what
+                // previously left touch devices with a tap that "did nothing".
+                showDetail(props);
                 // Snap slider to the score tier of the clicked road
                 const scoreVal = props[currentMode === 'walkability' ? 'index_walk_ft' : 'index_bike_ft'];
                 if (scoreVal !== null && scoreVal !== undefined) snapSliderToScore(scoreVal);
+                // On mobile, jump to the "Pick a Road" tab and pop the sheet
+                // open so the tap has an immediately visible result.
+                if (isMobile()) {
+                    if (setMobileTabActive) setMobileTabActive('road');
+                    if (expandMobileSheet) expandMobileSheet();
+                }
             }
             document.getElementById('map-hint').classList.add('hidden');
         });
