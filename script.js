@@ -33,6 +33,7 @@ document.addEventListener('DOMContentLoaded', () => {
             if (!deleting) {
                 taglineEl.textContent = phrase.slice(0, ++cIdx);
                 if (cIdx === phrase.length) {
+                    // pause at full word, then start deleting
                     setTimeout(() => { deleting = true; type(); }, 2200);
                     return;
                 }
@@ -48,10 +49,10 @@ document.addEventListener('DOMContentLoaded', () => {
                 setTimeout(type, 38);
             }
         }
-        setTimeout(type, 600);
+        setTimeout(type, 600); // small delay after card enters
     }
 
-    // Rotating footer stats
+    // Rotating footer stats — whole pill swaps background + text color
     const FOOTER_STATS = [
         { icon: 'ti-alert-triangle',      text: 'Road traffic injuries are the leading cause of death among children. - WHO',      color: '#B45309', bg: '#FEF3C7' },
         { icon: 'ti-building-skyscraper', text: 'By 2050, most urban residents will be children and young people. - UN-Habitat',   color: '#1D4ED8', bg: '#DBEAFE' },
@@ -165,8 +166,10 @@ document.addEventListener('DOMContentLoaded', () => {
     });
     if (card) card.addEventListener('click', e => e.stopPropagation());
 
+    // Click outside closes the card
     document.addEventListener('click', () => closeCard());
 
+    // Bridge for switchCity() (defined in a separate closure) to swap facts
     window.resetCityFacts = function(cityKey) {
         FACTS = FACTS_BY_CITY[cityKey] || FACTS_BY_CITY.salzburg;
         current = 0;
@@ -188,15 +191,23 @@ document.addEventListener('DOMContentLoaded', () => {
         if (label) label.textContent = on ? 'Light' : 'Dark';
         const style = on ? 'https://tiles.openfreemap.org/styles/dark' : 'https://tiles.openfreemap.org/styles/positron';
         if (map) {
+            // setStyle works any time; layers are re-added via style.load handler
+            // diff:false forces a full style replace — diffing between two unrelated
+            // style JSONs (positron vs dark) can otherwise leave custom layers broken
             map.setStyle(style, { diff: false });
+            // Guard: setStyle can occasionally cause MapLibre to re-insert its own
+            // default attribution control, duplicating our custom .map-plain-attrib
+            // div. Strip any native control if it appears.
             map.once('styledata', () => {
                 document.querySelectorAll('.maplibregl-ctrl-attrib').forEach(el => el.remove());
             });
         }
         localStorage.setItem('n4k-dark', on ? '1' : '0');
+        // Re-render chart with dark-aware colours
         if (currentProps) setTimeout(() => renderChart(currentProps), 50);
     }
 
+    // Restore preference
     if (localStorage.getItem('n4k-dark') === '1') applyDark(true);
 
     if (btn) btn.addEventListener('click', () => applyDark(!dark));
@@ -222,6 +233,10 @@ document.addEventListener('DOMContentLoaded', () => {
 
     try {
 
+    // ── CASE STUDY CITIES ─────────────────────────────────────
+    // Each entry points at its own hosted .pmtiles tile source, generated
+    // via the same NetAScore → tippecanoe pipeline (see README_tile_conversion.md),
+    // and the map view (center/zoom) to fly to when that city is selected.
     const CITIES = {
         salzburg: {
             label:       'Salzburg',
@@ -231,7 +246,7 @@ document.addEventListener('DOMContentLoaded', () => {
             center:      [13.055, 47.809],
             zoom:        12,
             hasPOI:      true,
-            hasEnv:      true
+            hasEnv:      true   // Environmental layers (land use, street trees) — Copernicus-based, Salzburg only
         },
         olomouc: {
             label:       'Olomouc',
@@ -241,13 +256,22 @@ document.addEventListener('DOMContentLoaded', () => {
             center:      [17.2509, 49.5938],
             zoom:        12,
             hasPOI:      true,
-            hasEnv:      true
+            hasEnv:      true   // lcu_olomouc.pmtiles / stl_olomouc.pmtiles — see README_tile_conversion.md
         }
     };
     let TILESET_URL   = CITIES[currentCity].tilesetUrl;
     let SOURCE_LAYER  = CITIES[currentCity].sourceLayer;
 
+    // =========================================================
+    // ALL INDICATORS — full list with definitions
+    // =========================================================
+    // =========================================================
+    // INDICATOR DEFINITIONS — per mode, from YAML profiles
+    // =========================================================
+
+    // WALKABILITY (profile_walk_kids.yml) — all weighted indicators
     const WALK_INDICATORS = [
+        // SAFETY
         { group:'safety',  key:'pedestrian_infrastructure_ft', label:'Foot Infrastructure', icon:'ti-walk',             color:'ind-slate',  weight:0.4,
           def:'Presence and type of pedestrian infrastructure ; footways, sidewalks, pedestrian areas. The single most important safety indicator for walking children.' },
         { group:'safety',  key:'road_category',                label:'Road Category',       icon:'ti-road',             color:'ind-pink',   weight:0.4,
@@ -264,6 +288,7 @@ document.addEventListener('DOMContentLoaded', () => {
           def:'Presence of traffic calming measures such as speed bumps, chicanes, or raised tables. These slow vehicles and make streets safer for children on foot.' },
         { group:'safety',  key:'designated_route_ft',          label:'Designated Route',    icon:'ti-route-square',     color:'ind-blue',   weight:0,
           def:'Whether this segment is part of an official pedestrian or school route. Designated routes are typically safer, better maintained and signposted.' },
+        // COMFORT
         { group:'comfort', key:'gradient_ft',                  label:'Gradient',            icon:'ti-trending-up',      color:'ind-coral',  weight:0.3,
           def:'Steepness of the road. Steep slopes are demanding for young children and pushchairs. Flat routes strongly encourage active travel.' },
         { group:'comfort', key:'greenness',                    label:'Greenery',            icon:'ti-trees',            color:'ind-green',  weight:0.3,
@@ -273,13 +298,14 @@ document.addEventListener('DOMContentLoaded', () => {
         { group:'comfort', key:'water',                        label:'Water nearby',        icon:'ti-droplet',          color:'ind-blue',   weight:0.4,
           def:'Proximity to rivers, streams or fountains. Water features make streets more engaging and pleasant; children are naturally drawn to them.' },
         { group:'comfort', key:'buildings',                    label:'Buildings',           icon:'ti-building',         color:'ind-slate',  weight:0.1,
-          def:'Density of surrounding buildings. Lower density scores higher here: a more open, less enclosed streetscape is treated as more comfortable, while heavily built-up surroundings score lower.' },
+          def:'Density of surrounding buildings. Building density is used as a proxy for access to destinations, with higher values indicating a greater concentration of nearby services and activities.' },
         { group:'comfort', key:'width',                        label:'Path width',          icon:'ti-arrows-horizontal',color:'ind-teal',   weight:0,
           def:'Width of the footpath or road. Wider paths give children more space to walk side by side, pass others safely, and feel less crowded.' },
         { group:'comfort', key:'parking',                      label:'On-street parking',   icon:'ti-parking',          color:'ind-coral',  weight:0,
           def:'Presence of on-street parking. Parked cars reduce visibility at crossings and can make footpaths feel narrower and less safe for children.' },
         { group:'comfort', key:'pavement',                     label:'Pavement surface',    icon:'ti-road-off',         color:'ind-amber',  weight:0,
           def:'Surface quality of the footpath. Smooth, well-maintained surfaces are safer and more comfortable; especially for younger children and those with pushchairs.' },
+        // JOY
         { group:'joy',     key:'play_and_outdoor',             label:'Play & outdoor',      icon:'ti-mood-kid',         color:'ind-green',  weight:0.2,
           def:'Number of play areas and outdoor activity spaces nearby. Play spots transform a boring route into an adventure; key finding from workshops.' },
         { group:'joy',     key:'sights',                       label:'Sights & landmarks',  icon:'ti-eye',              color:'ind-purple', weight:0,
@@ -292,11 +318,13 @@ document.addEventListener('DOMContentLoaded', () => {
           def:'Overall visual and sensory attractiveness of the street environment. Attractive streets motivate children to walk and make journeys feel shorter and more enjoyable.' },
     ];
 
+    // BIKEABILITY (profile_bike_kids.yml)
     const BIKE_INDICATORS = [
+        // SAFETY
         { group:'safety',  key:'bicycle_infrastructure_ft',    label:'Bike infrastructure', icon:'ti-bike',             color:'ind-blue',   weight:0.2,
           def:'Type of cycling facility: dedicated cycle path, shared lane, or none. A protected bike way is essential for children to cycle independently.' },
         { group:'safety',  key:'road_category',                label:'Road category',       icon:'ti-road',             color:'ind-pink',   weight:0.3,
-          def:'Road classification. Residential and calmed streets are safest for child cyclists: well separated from fast-moving traffic.' },
+          def:'Road classification. Residential and calmed streets are safest for child cyclists — well separated from fast-moving traffic.' },
         { group:'safety',  key:'lighting',                     label:'Street lighting',     icon:'ti-bulb',             color:'ind-amber',  weight:0.3,
           def:'Presence of street lighting. Lit routes give children and parents confidence to cycle in darker conditions.' },
         { group:'safety',  key:'designated_route_ft',          label:'Designated route',    icon:'ti-route-square',     color:'ind-blue',   weight:0.1,
@@ -307,24 +335,26 @@ document.addEventListener('DOMContentLoaded', () => {
           def:'Traffic calming measures such as speed bumps or raised junctions. These reduce vehicle speeds and make cycling safer for children.' },
         { group:'safety',  key:'number_lanes_ft',              label:'Number of lanes',     icon:'ti-layout-columns',   color:'ind-slate',  weight:0,
           def:'Number of traffic lanes. More lanes mean more traffic streams to cross and a more intimidating environment for child cyclists.' },
+        // COMFORT
         { group:'comfort', key:'parking',                      label:'On-street parking',   icon:'ti-parking',          color:'ind-coral',  weight:0.1,
-          def:'Whether on-street parking is allowed. Parked cars block sightlines and open doors unexpectedly: a real hazard for child cyclists.' },
+          def:'Whether on-street parking is allowed. Parked cars block sightlines and open doors unexpectedly — a real hazard for child cyclists.' },
         { group:'comfort', key:'pavement',                     label:'Pavement surface',    icon:'ti-road-off',         color:'ind-amber',  weight:0.1,
-          def:'Surface type. Smooth surfaces matter for child cyclists: rough cobbles slow them and can cause falls.' },
+          def:'Surface type. Smooth surfaces matter for child cyclists — rough cobbles slow them and can cause falls.' },
         { group:'comfort', key:'gradient_ft',                  label:'Gradient',            icon:'ti-trending-up',      color:'ind-coral',  weight:0.1,
-          def:'Steepness of the road. Steep hills are hard to cycle up and dangerous to descend: flat routes are strongly preferred for children.' },
+          def:'Steepness of the road. Steep hills are hard to cycle up and dangerous to descend — flat routes are strongly preferred for children.' },
         { group:'comfort', key:'width',                        label:'Path width',          icon:'ti-arrows-horizontal',color:'ind-teal',   weight:0,
           def:'Width of the cycling infrastructure. Wider paths allow children to cycle side by side and overtake safely without veering into traffic.' },
         { group:'comfort', key:'buildings',                    label:'Buildings',           icon:'ti-building',         color:'ind-slate',  weight:0,
-          def:'Density of surrounding buildings. Built-up areas can create wind tunnels and blind corners: less dense environments are more comfortable for cycling.' },
+          def:'Density of surrounding buildings. Built-up areas can create wind tunnels and blind corners — less dense environments are more comfortable for cycling.' },
         { group:'comfort', key:'greenness',                    label:'Greenery',            icon:'ti-trees',            color:'ind-green',  weight:0,
           def:'Green surroundings alongside the route. Greenery makes cycling more pleasant and can provide shade on hot days.' },
         { group:'comfort', key:'water',                        label:'Water nearby',        icon:'ti-droplet',          color:'ind-blue',   weight:0,
-          def:'Proximity to water features. Interesting environments make cycling feel less like effort: children report water as a highlight of their routes.' },
+          def:'Proximity to water features. Interesting environments make cycling feel less like effort — children report water as a highlight of their routes.' },
         { group:'comfort', key:'noise',                        label:'Quietness',           icon:'ti-ear',              color:'ind-teal',   weight:0,
           def:'Ambient noise level. Quieter streets are less stressful and make it easier for child cyclists to hear approaching vehicles.' },
+        // JOY
         { group:'joy',     key:'sights',                       label:'Sights & landmarks',  icon:'ti-eye',              color:'ind-purple', weight:0.4,
-          def:'Number of points of interest nearby. Interesting streets reduce boredom: the top finding from the SALIS workshops.' },
+          def:'Number of points of interest nearby. Interesting streets reduce boredom — the top finding from the SALIS workshops.' },
         { group:'joy',     key:'play_and_outdoor',             label:'Play & outdoor',      icon:'ti-mood-kid',         color:'ind-green',  weight:0,
           def:'Play areas and outdoor spaces along the route. For children, a bike ride is much more appealing if it passes interesting places to stop.' },
         { group:'joy',     key:'attractiveness',               label:'Attractiveness',      icon:'ti-sparkles',         color:'ind-purple', weight:0,
@@ -332,7 +362,7 @@ document.addEventListener('DOMContentLoaded', () => {
         { group:'joy',     key:'comfort_facilities',           label:'Rest facilities',     icon:'ti-armchair',         color:'ind-blue',   weight:0,
           def:'Benches, shelters and rest spots. Useful for longer cycling trips so children can take breaks and stay hydrated.' },
         { group:'joy',     key:'eating_facilities',            label:'Eating spots',        icon:'ti-tools-kitchen',    color:'ind-amber',  weight:0,
-          def:'Food shops and kiosks nearby. A bakery or kiosk on the route is a motivating landmark: children cited these as highlights in SALIS workshops.' },
+          def:'Food shops and kiosks nearby. A bakery or kiosk on the route is a motivating landmark — children cited these as highlights in SALIS workshops.' },
     ];
 
     function getIndicators() {
@@ -345,6 +375,11 @@ document.addEventListener('DOMContentLoaded', () => {
         { id:'joy',     label:'Joy',     color:'#9B59B6' },
     ];
 
+    // =========================================================
+    // MODEL WEIGHTS — copied exactly from profile_walk_kids.yml / profile_bike_kids.yml
+    // Used to reconstruct exact per-indicator sub-scores from the tile's
+    // index_walk_ft_explanation / index_bike_ft_explanation fields.
+    // =========================================================
     const MODEL_WEIGHTS = {
         walkability: {
             pedestrian_infrastructure: 0.4, road_category: 0.4, max_speed_greatest: 0.3,
@@ -360,10 +395,15 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     };
 
+    // Maps this dashboard's indicator keys (e.g. 'pedestrian_infrastructure_ft')
+    // to the base name used in the YAML / tile explanation object (e.g. 'pedestrian_infrastructure').
     function toModelKey(key) {
         return key.replace(/_ft$/, '');
     }
 
+    // Parses index_walk_ft_explanation / index_bike_ft_explanation for the
+    // currently selected mode. Tolerates the field being a JSON string or
+    // already a parsed object (tile encoding can vary).
     function getExplanationObj(props) {
         const field = currentMode === 'walkability' ? props.index_walk_ft_explanation : props.index_bike_ft_explanation;
         if (!field) return null;
@@ -371,6 +411,9 @@ document.addEventListener('DOMContentLoaded', () => {
         try { return JSON.parse(field); } catch (e) { return null; }
     }
 
+    // Returns { value, source } where source is 'model' (exact, reconstructed
+    // from the real NetAScore explanation field) or 'estimated' (fallback via
+    // normaliseField for indicators the model doesn't report per-road).
     function getIndicatorScore(def, props) {
         const modelKey = toModelKey(def.key);
         const weights  = MODEL_WEIGHTS[currentMode];
@@ -424,13 +467,15 @@ document.addEventListener('DOMContentLoaded', () => {
             case 'water':            return num > 0 ? 1 : 0;
             case 'sights':           return num > 0 ? 1 : 0;
             case 'attractiveness':   return num > 0 ? 1 : 0;
-            case 'traffic_calming': return num > 0 ? Math.min(1, num/3)  : 0;
+            case 'traffic_calming': return num > 0 ? Math.min(1, num/3)  : 0; // not in official YAML profile yet — placeholder pending model support
             case 'play_and_outdoor': return num > 0 ? 1 : 0;
             case 'eating_facilities':return num > 0 ? 1 : 0;
             case 'facilities':       return num > 0 ? 1 : 0;
             case 'comfort_facilities':return num > 0 ? 1 : 0;
             case 'benches':          return num > 0 ? 1 : 0;
             case 'crossings': {
+                // YAML: >0 crossings -> 1. At 0 crossings, the real model looks at
+                // road_category instead: primary/secondary/missing -> 0, residential -> 0.5, else -> 1.
                 if (num > 0) return 1;
                 const rc = String((allProps && allProps.road_category) || '').toLowerCase();
                 if (rc === 'primary' || rc === 'secondary' || rc === '') return 0;
@@ -441,6 +486,8 @@ document.addEventListener('DOMContentLoaded', () => {
             case 'max_speed_ft': case 'max_speed_greatest':
                 return num >= 100 ? 0 : num >= 80 ? 0.2 : num >= 70 ? 0.3 : num >= 60 ? 0.4 : num >= 50 ? 0.6 : num >= 30 ? 0.85 : num > 0 ? 0.9 : 1;
             case 'gradient_ft': {
+                // Walk profile: 0,1→1; 2→0.7; 3→0.5; 4→0.25 (gentler penalty)
+                // Bike profile: 0→0.9; -1→1; 1→0.5; 2→0.4; 3→0.25; 4→0
                 const gWalk = {4:0.25, 3:0.5, 2:0.7, 1:1, 0:1, '-1':1, '-2':0.7, '-3':0.5, '-4':0.25};
                 const gBike = {4:0, 3:0.25, 2:0.4, 1:0.5, 0:0.9, '-1':1, '-2':0.95, '-3':0.35, '-4':0};
                 const gMap  = currentMode === 'walkability' ? gWalk : gBike;
@@ -484,15 +531,25 @@ document.addEventListener('DOMContentLoaded', () => {
         return 'Excellent';
     }
 
+    // =========================================================
+    // THRESHOLD — gradient slider + 5 emoji chips
+    // =========================================================
+    // True tier boundaries — deliberately matching scoreColor()/scoreLabel()'s
+    // own <=0.20/<=0.40/<=0.60/<=0.80 classification EXACTLY. Each tier's
+    // filter is built as (min, max] — exclusive lower bound (except Poor,
+    // which starts at 0 inclusive), inclusive upper bound — so a road is
+    // never colored one tier while the filter counts it as a different one
+    // (the earlier bug: 0.605 passed the "< 0.61" filter for Moderate but
+    // scoreColor colored it Good, since 0.605 > 0.60).
     const CHIP_RANGES = [
-        { min:0.0,  max:0.20, label:'0.00 – 0.20' },
-        { min:0.20, max:0.40, label:'0.21 – 0.40' },
-        { min:0.40, max:0.60, label:'0.41 – 0.60' },
-        { min:0.60, max:0.80, label:'0.61 – 0.80' },
-        { min:0.80, max:1.00, label:'0.81 – 1.00' },
+        { min:0.0,  max:0.20, label:'0.00 – 0.20' },  // Poor
+        { min:0.20, max:0.40, label:'0.21 – 0.40' },  // Average
+        { min:0.40, max:0.60, label:'0.41 – 0.60' },  // Moderate
+        { min:0.60, max:0.80, label:'0.61 – 0.80' },  // Good
+        { min:0.80, max:1.00, label:'0.81 – 1.00' },  // Excellent
     ];
     let thresholdMax  = 1.0;
-    let thresholdLabel = null;
+    let thresholdLabel = null; // set when a chip/snap is active, for exact display text
 
     function applyThreshold() {
         const el = document.getElementById('threshold-value');
@@ -503,39 +560,21 @@ document.addEventListener('DOMContentLoaded', () => {
         if (mk) mk.style.left = (threshold * 100).toFixed(1) + '%';
         const lid  = currentMode === 'walkability' ? 'walkability-layer' : 'bikeability-layer';
         const prop = currentMode === 'walkability' ? 'index_walk_ft' : 'index_bike_ft';
-        // Same sentinel guard as sharedPaint()/highlightColorExpr() — a road with
-        // no score for the current mode (e.g. a pedestrian-only path has no
-        // index_bike_ft key at all) makes ['get', prop] return null. Comparing
-        // null directly against a number throws "Expected value to be of type
-        // number, but found null instead", which previously left these roads in
-        // an inconsistent render state (visible with a stale/wrong color until
-        // clicked, at which point the real — missing — data showed "No data").
-        // Coalescing to -1 first means the comparison always sees a real number,
-        // so no-data roads are cleanly excluded by every tier filter instead.
-        const val = ['coalesce', ['get', prop], -1];
-        // Only gate on the layer existing, not isStyleLoaded() — see the mode
-        // toggle handler for why: that check can be transiently false during
-        // ordinary tile loading, causing a tier filter to silently fail to
-        // apply and leave a stale/wrong filter (or no filter) on the layer.
-        if (map && map.getLayer(lid)) {
+        if (map && map.isStyleLoaded() && map.getLayer(lid)) {
             if (threshold === 0.0 && thresholdMax === 1.0) map.setFilter(lid, null);
             else if (thresholdMax < 1.0) {
+                // Exclusive lower bound (>) except for the Poor tier, whose
+                // true min is 0 and must stay inclusive (>=).
                 const lowerOp = threshold === 0.0 ? '>=' : '>';
-                map.setFilter(lid, ['all', [lowerOp, val, threshold], ['<=', val, thresholdMax]]);
+                map.setFilter(lid, ['all', [lowerOp,['get',prop],threshold], ['<=',['get',prop],thresholdMax]]);
             }
-            else map.setFilter(lid, ['>=', val, threshold]);
+            else map.setFilter(lid, ['>=', ['get', prop], threshold]);
         }
     }
 
     document.querySelectorAll('.face-chip').forEach((chip, i) => {
         chip.addEventListener('click', () => {
-            // A chip can be visually highlighted just to show which tier the
-            // currently pinned road belongs to (see snapSliderToScore), without
-            // any real filter being applied. Only treat it as "already active"
-            // if threshold/thresholdMax have actually moved off the unfiltered
-            // default — otherwise a manual click here would be misread as
-            // "turn this filter off" when nothing was actually filtering yet.
-            const already = chip.classList.contains('fc-active') && (threshold !== 0.0 || thresholdMax !== 1.0);
+            const already = chip.classList.contains('fc-active');
             document.querySelectorAll('.face-chip').forEach(c => c.classList.remove('fc-active'));
             if (already) {
                 threshold = 0.0; thresholdMax = 1.0; thresholdLabel = null;
@@ -548,6 +587,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 document.getElementById('clear-filter').style.display = 'block';
             }
             applyThreshold();
+            // Deselect pinned road when filter changes — it may no longer be visible
             if (typeof clearPin === 'function') clearPin();
         });
     });
@@ -577,6 +617,7 @@ document.addEventListener('DOMContentLoaded', () => {
             thresholdLabel = null;
             document.querySelectorAll('.face-chip').forEach(c => c.classList.remove('fc-active'));
             document.getElementById('clear-filter').style.display = 'none';
+            // update thumb position immediately, debounce the map filter
             const mk = document.getElementById('legend-marker');
             if (mk) mk.style.left = (threshold * 100).toFixed(1) + '%';
             const el = document.getElementById('threshold-value');
@@ -593,25 +634,17 @@ document.addEventListener('DOMContentLoaded', () => {
         btn.addEventListener('click', () => {
             const mode = btn.dataset.mode; if (mode === currentMode) return;
             currentMode = mode;
-            threshold = 0.0;
+            threshold = 0.0; // show all routes for the new mode
             document.querySelectorAll('.face-chip').forEach(c => c.classList.remove('fc-active'));
             document.getElementById('clear-filter').style.display = 'none';
             document.querySelectorAll('.mode-btn[data-mode]').forEach(b => b.classList.remove('active-walk','active-bike'));
             btn.classList.add(mode === 'walkability' ? 'active-walk' : 'active-bike');
+            // Update fullscreen HUD mode label
             const fsMode = document.getElementById('fs-hud-mode');
             if (fsMode) fsMode.innerHTML = mode === 'walkability'
                 ? '<i class="ti ti-walk"></i> Walkability'
                 : '<i class="ti ti-bike"></i> Bikeability';
-            // Only gate on the layer actually existing — isStyleLoaded() can be
-            // transiently false during ordinary tile loading (a pan, zoom, or
-            // right after a city switch), which has nothing to do with whether
-            // it's safe to call setLayoutProperty. Gating on it here meant this
-            // visibility swap could silently no-op, leaving BOTH layers visible
-            // at once — since bikeability-layer sits on top, any gap in it (a
-            // filtered-out or no-data road) let walkability-layer's color show
-            // through underneath. That's what caused roads to render one color
-            // but report a different score on hover/click.
-            if (map && map.getLayer('walkability-layer')) {
+            if (map && map.isStyleLoaded() && map.getLayer('walkability-layer')) {
                 map.setLayoutProperty('walkability-layer', 'visibility', mode === 'walkability' ? 'visible' : 'none');
                 map.setLayoutProperty('bikeability-layer', 'visibility', mode === 'bikeability' ? 'visible' : 'none');
             }
@@ -641,6 +674,7 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     });
 
+    // ── RIGHT PANEL TAB SWITCHER ──
     let rpTab = 'metrics';
     document.querySelectorAll('.rp-tab').forEach(btn => {
         btn.addEventListener('click', () => {
@@ -653,26 +687,15 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     });
 
+    // =========================================================
+    // PANEL
+    // =========================================================
     function showEmpty() {
         document.getElementById('detail-empty').style.display  = 'flex';
         document.getElementById('detail-loaded').style.display = 'none';
-        // Mobile: collapse the bottom sheet back down when nothing is selected.
-        const ms = document.getElementById('mobile-sheet');
-        if (ms) ms.classList.remove('expanded');
         if (breakdownChart) { breakdownChart.destroy(); breakdownChart = null; }
         currentProps = null;
-        if (map) setHighlight(null);
-        // Clear the road-tier chip indicator once nothing is selected — but
-        // only if there's no real, user-applied filter currently active
-        // (threshold/thresholdMax still at the unfiltered default). If the
-        // user genuinely filtered by a chip themselves, that stays untouched.
-        if (threshold === 0.0 && thresholdMax === 1.0) {
-            document.querySelectorAll('.face-chip').forEach(c => c.classList.remove('fc-active'));
-            const el = document.getElementById('threshold-value');
-            if (el) el.textContent = 'All routes';
-            const mk = document.getElementById('legend-marker');
-            if (mk) mk.style.left = '0%';
-        }
+        if (map && map.isStyleLoaded()) setHighlight(null);
     }
 
     function showDetail(props) {
@@ -680,15 +703,8 @@ document.addEventListener('DOMContentLoaded', () => {
         document.getElementById('detail-empty').style.display  = 'none';
         document.getElementById('detail-loaded').style.display = 'block';
         document.getElementById('map-hint').classList.add('hidden');
-        // Mobile: a road was tapped — switch to the "Pick a Road" tab and
-        // bring the sheet up so the result is actually visible.
-        const msRoad = document.getElementById('mobile-sheet');
-        if (msRoad) {
-            msRoad.classList.add('expanded');
-            const roadTab = document.querySelector('.mobile-tab[data-tab="road"]');
-            if (roadTab) roadTab.click();
-        }
 
+        // Score
         const ik    = currentMode === 'walkability' ? 'index_walk_ft' : 'index_bike_ft';
         const score = parseFloat(props[ik]);
         const sc    = isNaN(score) ? null : score;
@@ -713,11 +729,13 @@ document.addEventListener('DOMContentLoaded', () => {
         const hBg  = color;
         const hCol = '#ffffff';
 
+        // Hero strip
         const heroEl   = document.getElementById('rp-hero');
         const heroText = document.getElementById('rp-hero-text');
         if (heroEl)   { heroEl.style.background = hBg; }
         if (heroText) { heroText.textContent = tier.hero; heroText.style.color = hCol; }
 
+        // Mood icon — filled SVG face, score-colored
         const moodIcon = document.getElementById('rp-mood-icon');
         if (moodIcon) {
             const svgEl = tier.svg.replace('fill="currentColor"', 'fill="' + color + '"');
@@ -732,6 +750,7 @@ document.addEventListener('DOMContentLoaded', () => {
         const len = parseFloat(props.length);
         if (dl) dl.textContent = isNaN(len) ? '' : (len < 1000 ? len.toFixed(0) + ' m' : (len/1000).toFixed(2) + ' km');
 
+        // Metrics tab content
         renderChart(props);
 
         const indList = document.getElementById('indicator-list');
@@ -774,14 +793,19 @@ document.addEventListener('DOMContentLoaded', () => {
             indList.appendChild(card);
         });
 
+        // Experience tab — always render so data is ready
         renderExperience(props, tier);
     }
 
+    // =========================================================
+    // EXPERIENCE TAB
+    // =========================================================
     function renderExperience(props, tier) {
         const isWalk = currentMode === 'walkability';
         const overall = parseFloat(isWalk ? props.index_walk_ft : props.index_bike_ft);
         const sc = isNaN(overall) ? null : overall;
 
+        // Derive tier key
         const TIERS = [
             { max:0.2, key:'poor'      },
             { max:0.4, key:'average'   },
@@ -794,6 +818,7 @@ document.addEventListener('DOMContentLoaded', () => {
             : sc > 0.8 ? 'excellent' : sc > 0.6 ? 'good'
             : sc > 0.4 ? 'moderate'  : sc > 0.2 ? 'average' : 'poor');
 
+        // ── 1. QUOTE BOX — colour changes with score tier ──
         const TIER_THEME = {
             excellent: { bg:'rgba(55,138,221,0.08)',  border:'rgba(55,138,221,0.22)',  text:'#185FA5', textDark:'#93c5fd', bgDark:'rgba(55,138,221,0.12)',  borderDark:'rgba(55,138,221,0.3)'  },
             good:      { bg:'rgba(59,109,17,0.07)',   border:'rgba(59,109,17,0.2)',    text:'#3B6D11', textDark:'#86c83c', bgDark:'rgba(59,109,17,0.12)',   borderDark:'rgba(59,109,17,0.3)'   },
@@ -815,6 +840,7 @@ document.addEventListener('DOMContentLoaded', () => {
         const qByline = document.querySelector('.exp-quote-byline');
         if (qByline) { qByline.style.color = isDark ? theme.textDark : theme.text; }
 
+        // ── 2. CHILD VOICE QUOTE (no italic) ──
         const QUOTES = {
             excellent: "I love this street. I would totally come here by myself.",
             good:      "Pretty good. I feel safe here, even if it is not super exciting.",
@@ -840,6 +866,16 @@ document.addEventListener('DOMContentLoaded', () => {
             ctxEl.style.color = isDark ? theme.textDark : theme.text;
         }
 
+        // ── 3. STREET MOOD PILL ──
+        // Mood maps directly to the score colour band (mirrors the map colour scale):
+        // Red   (0.0-0.2) = Dangerous
+        // Orange(0.2-0.4) = Busy
+        // Yellow(0.4-0.6) = Dull  ... unless greenness is high, then Relaxing
+        // Green (0.6-0.8) = Relaxing
+        // Blue  (0.8-1.0) = Welcoming
+        const safeSc  = null;
+        const comfSc  = null;
+        const joySc   = null;
         const greenRaw = parseFloat(props['greenness']);
         const hasGreenery = !isNaN(greenRaw) && greenRaw > 40;
 
@@ -866,6 +902,7 @@ document.addEventListener('DOMContentLoaded', () => {
             moodPill.style.color = mood.color;
         }
 
+        // ── 5. CHILD-FRIENDLY CHECKLIST ──
         const CHECKLIST_ITEMS = [
             { key: isWalk ? 'pedestrian_infrastructure_ft' : 'bicycle_infrastructure_ft',
               label: isWalk ? 'Dedicated footway' : 'Dedicated bike lane',
@@ -901,6 +938,7 @@ document.addEventListener('DOMContentLoaded', () => {
             });
         }
 
+        // ── 7. IMPROVEMENT IDEAS — only where data exists and score is low ──
         const IMPROVE_MAP = [
             { key: isWalk ? 'pedestrian_infrastructure_ft' : 'bicycle_infrastructure_ft',
               threshold: 0.5, icon: isWalk ? 'ti-walk' : 'ti-bike',
@@ -954,12 +992,12 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     // =========================================================
-    // CHART — only weighted indicators that have data  (FIXED)
+    // CHART — only weighted indicators that have data
     // =========================================================
     function renderChart(props) {
         if (breakdownChart) { breakdownChart.destroy(); breakdownChart = null; }
         const ctx = document.getElementById('breakdown-chart').getContext('2d');
-        const labels=[], data=[], displayData=[], bg=[], bd=[];
+        const labels=[], data=[], bg=[], bd=[];
 
         const indMeta = []; // parallel array to store def for tooltip
 
@@ -970,34 +1008,29 @@ document.addEventListener('DOMContentLoaded', () => {
                     const { value: norm, source } = getIndicatorScore(ind, props);
                     if (norm === null) return; // only show indicators with real data
                     const col = scoreColor(norm);
-                    const realPct = +(norm * 100).toFixed(1);
                     labels.push(ind.label);
-                    data.push(realPct);
-                    // Floor only the *drawn* bar width so a true 0 score is still
-                    // visible as a thin sliver instead of disappearing entirely —
-                    // the tooltip below still reports the real, unfloored value.
-                    displayData.push(Math.max(2, realPct));
+                    data.push(+(norm * 100).toFixed(1));
                     bg.push(col + 'cc');
                     bd.push(col);
                     indMeta.push({ key: ind.key, raw: props[ind.key], norm, source });
                 });
         });
 
-        // Compact rows — thin bars, tight spacing, matching the original design.
+        // Set height before creating chart so canvas is sized correctly
         const chartWrap = document.querySelector('.chart-wrap');
-        if (chartWrap) chartWrap.style.height = Math.max(90, labels.length * 20) + 'px';
+        if (chartWrap) chartWrap.style.height = Math.max(80, labels.length * 18) + 'px';
 
         breakdownChart = new Chart(ctx, {
             type: 'bar',
             data: { labels, datasets:[{
-                data: displayData,
+                data,
                 backgroundColor: bg,
                 borderColor: bd,
                 borderWidth: 1,
                 borderRadius: 3,
                 borderSkipped: false,
-                barPercentage: 0.5,
-                categoryPercentage: 0.95,
+                barPercentage: 0.55,
+                categoryPercentage: 0.85,
             }]},
             options: {
                 indexAxis: 'y',
@@ -1007,22 +1040,13 @@ document.addEventListener('DOMContentLoaded', () => {
                 plugins: {
                     legend: { display: false },
                     tooltip: {
-                        // Compact floating tooltip, back to appearing right at the
-                        // hovered bar (not below the chart) — kept small (tight
-                        // padding, single-line body, no color box) so it stays
-                        // closer to the size of one row instead of the default
-                        // Chart.js tooltip which is noticeably taller.
-                        padding: 6,
-                        displayColors: false,
-                        titleFont: { family:'Nunito', size:10, weight:'700' },
-                        bodyFont:  { family:'Nunito', size:10 },
                         callbacks: {
                             label: ctx => {
                                 const m = indMeta[ctx.dataIndex];
                                 if (!m) return '';
                                 const raw  = fmtValue(m.key, m.raw);
                                 const qual = scoreLabel(m.norm);
-                                return raw + '  ·  ' + qual;
+                                return '  ' + raw + '  ·  ' + qual;
                             }
                         }
                     }
@@ -1080,6 +1104,7 @@ document.addEventListener('DOMContentLoaded', () => {
     }
     updateTooltipTheme();
 
+    // Keep tooltip theme in sync when dark mode toggles
     const darkToggleBtn = document.getElementById('dark-toggle');
     if (darkToggleBtn) darkToggleBtn.addEventListener('click', () => setTimeout(updateTooltipTheme, 20));
 
@@ -1119,11 +1144,13 @@ document.addEventListener('DOMContentLoaded', () => {
             '</div>' +
             (road || lenTxt ? '<div style="padding-top:5px;border-top:1px solid ' + dividerColor + ';font-size:10px;color:' + mutedColor + ';text-transform:capitalize">' + road + (road && lenTxt ? ' · ' : '') + lenTxt + '</div>' : '');
 
+        // Position relative to map-wrapper
         const mapWrapper = document.querySelector('.map-wrapper');
         const rect = mapWrapper ? mapWrapper.getBoundingClientRect() : { left:0, top:0, width: window.innerWidth, height: window.innerHeight };
         const tw = 200, th = 120;
         const vw = rect.width;
         const vh = rect.height;
+        // cursor position relative to map-wrapper
         let tx = clientX - rect.left + 16;
         let ty = clientY - rect.top  - 18;
         if (tx + tw > vw - 10) tx = (clientX - rect.left) - tw - 10;
@@ -1143,205 +1170,22 @@ document.addEventListener('DOMContentLoaded', () => {
         center: [13.055, 47.809],
         zoom: 12,
         attributionControl: false,
-        preserveDrawingBuffer: true
+        preserveDrawingBuffer: true   // required for canvas export to work
     });
     map.addControl(new maplibregl.NavigationControl({ showCompass: false }), 'top-right');
     map.addControl(new maplibregl.FullscreenControl({ container: document.querySelector('.map-wrapper') }), 'top-right');
     map.addControl(new maplibregl.ScaleControl({ maxWidth: 120, unit: 'metric' }), 'bottom-left');
 
+    // Surface any hard map error (e.g. unreachable basemap style) visibly instead of silent blank
     map.on('error', e => {
         console.error('Map error:', e && e.error);
     });
+    // Absolute last-resort safety net: if the map has still never fired 'load' after
+    // 20s (style unreachable, network completely blocked, etc.) show a clear error
+    // with a reload option instead of an endless spinner or silent blank map.
     let mapDidLoad = false;
     map.once('load', () => { mapDidLoad = true; });
     setTimeout(() => { if (!mapDidLoad) showMapLoadError(); }, 20000);
-
-    // =========================================================
-    // LOCATION SEARCH — OpenStreetMap Nominatim, like osm.org's search box
-    // =========================================================
-    (function setupLocationSearch() {
-        const wrap      = document.getElementById('map-search-wrap');
-        const input     = document.getElementById('map-search-input');
-        const clearBtn  = document.getElementById('map-search-clear');
-        const resultsEl = document.getElementById('map-search-results');
-        if (!wrap || !input || !resultsEl) return;
-
-        let searchMarker  = null;
-        let debounceTimer = null;
-        let activeRequest = 0; // guards against out-of-order responses
-        let currentResults = []; // the place objects behind the currently rendered list
-        let activeIndex   = -1; // which suggestion is keyboard-highlighted, -1 = none
-
-        function closeResults() {
-            resultsEl.style.display = 'none';
-            resultsEl.innerHTML = '';
-            currentResults = [];
-            activeIndex = -1;
-        }
-
-        function setLoading() {
-            resultsEl.innerHTML = '<div class="map-search-result-loading">Searching…</div>';
-            resultsEl.style.display = 'block';
-        }
-
-        function renderResults(list) {
-            currentResults = list;
-            activeIndex = -1;
-            if (!list.length) {
-                resultsEl.innerHTML = '<div class="map-search-result-empty">No matches found</div>';
-                resultsEl.style.display = 'block';
-                return;
-            }
-            resultsEl.innerHTML = '';
-            list.forEach((place, i) => {
-                const item = document.createElement('div');
-                item.className = 'map-search-result-item';
-                item.dataset.index = i;
-                const parts = (place.display_name || '').split(',');
-                const main  = parts[0] || place.display_name || 'Unknown place';
-                const sub   = parts.slice(1, 4).join(',').trim();
-                item.innerHTML = '<i class="ti ti-map-pin-search"></i><div><div class="map-search-result-main"></div><div class="map-search-result-sub"></div></div>';
-                item.querySelector('.map-search-result-main').textContent = main;
-                item.querySelector('.map-search-result-sub').textContent = sub;
-                item.addEventListener('click', () => selectResult(place));
-                // Hovering with the mouse also updates the keyboard-highlighted
-                // item, so the two selection methods stay in sync.
-                item.addEventListener('mouseenter', () => setActiveIndex(i));
-                resultsEl.appendChild(item);
-            });
-            resultsEl.style.display = 'block';
-        }
-
-        // Moves the keyboard highlight to `idx` (clamped to the valid range),
-        // updates the visual highlight, and scrolls it into view if the list
-        // is scrolled. Used by ArrowDown/ArrowUp and by mouse hover above.
-        function setActiveIndex(idx) {
-            if (!currentResults.length) return;
-            activeIndex = Math.max(0, Math.min(idx, currentResults.length - 1));
-            resultsEl.querySelectorAll('.map-search-result-item').forEach(el => {
-                el.classList.toggle('active', Number(el.dataset.index) === activeIndex);
-            });
-            const activeEl = resultsEl.querySelector('.map-search-result-item.active');
-            if (activeEl && activeEl.scrollIntoView) activeEl.scrollIntoView({ block: 'nearest' });
-        }
-
-        function selectResult(place) {
-            const lon = parseFloat(place.lon);
-            const lat = parseFloat(place.lat);
-            if (isNaN(lon) || isNaN(lat)) return;
-
-            input.value = (place.display_name || '').split(',')[0];
-            clearBtn.style.display = 'flex';
-            closeResults();
-            wrap.classList.remove('focused');
-            input.blur();
-
-            let zoom = 15;
-            if (place.boundingbox && place.boundingbox.length === 4) {
-                try {
-                    map.fitBounds([
-                        [parseFloat(place.boundingbox[2]), parseFloat(place.boundingbox[0])],
-                        [parseFloat(place.boundingbox[3]), parseFloat(place.boundingbox[1])]
-                    ], { padding: 60, duration: 900, maxZoom: 17 });
-                } catch (e) {
-                    map.flyTo({ center: [lon, lat], zoom, duration: 900 });
-                }
-            } else {
-                map.flyTo({ center: [lon, lat], zoom, duration: 900 });
-            }
-
-            if (searchMarker) searchMarker.remove();
-            const el = document.createElement('div');
-            el.className = 'map-search-marker';
-            searchMarker = new maplibregl.Marker({ element: el, anchor: 'bottom' })
-                .setLngLat([lon, lat])
-                .addTo(map);
-        }
-
-        async function runSearch(query) {
-            const requestId = ++activeRequest;
-            // Only show the "Searching…" placeholder if nothing is already
-            // displayed. If a previous query's results are still visible,
-            // keep them on screen instead of blanking them out — otherwise
-            // every additional keystroke (a totally normal part of typing)
-            // wipes the list and replaces it with a loading message for
-            // however long the network round-trip takes, which reads as
-            // "the suggestions disappeared" even though nothing is wrong.
-            if (!resultsEl.innerHTML) setLoading();
-            try {
-                // Softly bias results toward whichever city is currently in
-                // view (does not exclude results elsewhere — just ranks
-                // nearby matches higher), using Nominatim's viewbox param.
-                let viewboxParam = '';
-                try {
-                    const b = map.getBounds();
-                    viewboxParam = '&viewbox=' + [b.getWest(), b.getNorth(), b.getEast(), b.getSouth()].join(',');
-                } catch (e) { /* map not ready yet — search without bias */ }
-
-                const url = 'https://nominatim.openstreetmap.org/search?format=jsonv2&addressdetails=0&limit=6&q='
-                    + encodeURIComponent(query) + viewboxParam;
-                const res  = await fetch(url, { headers: { 'Accept-Language': 'en' } });
-                const data = await res.json();
-                if (requestId !== activeRequest) return; // a newer search superseded this one
-                renderResults(Array.isArray(data) ? data : []);
-            } catch (e) {
-                if (requestId !== activeRequest) return;
-                resultsEl.innerHTML = '<div class="map-search-result-empty">Search unavailable: check your connection</div>';
-                resultsEl.style.display = 'block';
-            }
-        }
-
-        input.addEventListener('input', () => {
-            const q = input.value.trim();
-            clearBtn.style.display = q ? 'flex' : 'none';
-            clearTimeout(debounceTimer);
-            if (q.length < 3) { closeResults(); return; }
-            debounceTimer = setTimeout(() => runSearch(q), 400);
-        });
-
-        input.addEventListener('focus', () => {
-            wrap.classList.add('focused');
-            if (input.value.trim().length >= 3 && resultsEl.innerHTML) resultsEl.style.display = 'block';
-        });
-
-        input.addEventListener('keydown', (e) => {
-            if (e.key === 'Escape') {
-                input.blur(); closeResults(); wrap.classList.remove('focused');
-                return;
-            }
-
-            const hasList = resultsEl.style.display === 'block' && currentResults.length;
-
-            if (e.key === 'ArrowDown') {
-                e.preventDefault(); // don't move the text cursor
-                if (!hasList) return;
-                setActiveIndex(activeIndex < 0 ? 0 : activeIndex + 1);
-            } else if (e.key === 'ArrowUp') {
-                e.preventDefault();
-                if (!hasList) return;
-                setActiveIndex(activeIndex < 0 ? currentResults.length - 1 : activeIndex - 1);
-            } else if (e.key === 'Enter') {
-                if (!hasList || activeIndex < 0) return; // let Enter behave normally if nothing is highlighted
-                e.preventDefault();
-                selectResult(currentResults[activeIndex]);
-            }
-        });
-
-        clearBtn.addEventListener('click', () => {
-            input.value = '';
-            clearBtn.style.display = 'none';
-            closeResults();
-            input.focus();
-            if (searchMarker) { searchMarker.remove(); searchMarker = null; }
-        });
-
-        document.addEventListener('click', (e) => {
-            if (!wrap.contains(e.target)) {
-                closeResults();
-                wrap.classList.remove('focused');
-            }
-        });
-    })();
 
     function addMapLayers() {
         if (!map.getSource('netascore')) {
@@ -1349,7 +1193,7 @@ document.addEventListener('DOMContentLoaded', () => {
         }
 
         const sharedPaint = prop => {
-            const val = ['coalesce', ['get', prop], -1];
+            const val = ['coalesce', ['get', prop], -1]; // -1 = safe "no data" sentinel, never null
             return {
                 'line-width': ['interpolate',['linear'],['zoom'],10,0.6,12,1.4,14,2.2,16,4.0],
                 'line-opacity': 0.85, 'line-blur': 0.1,
@@ -1371,14 +1215,11 @@ document.addEventListener('DOMContentLoaded', () => {
             map.addLayer({ id:'walkability-layer', type:'line', source:'netascore', 'source-layer':SOURCE_LAYER, layout:{'line-cap':'round','line-join':'round', visibility: walkVis}, paint:sharedPaint('index_walk_ft') });
         if (!map.getLayer('bikeability-layer'))
             map.addLayer({ id:'bikeability-layer', type:'line', source:'netascore', 'source-layer':SOURCE_LAYER, layout:{'line-cap':'round','line-join':'round', visibility: bikeVis}, paint:sharedPaint('index_bike_ft') });
-        const isMobileMap = window.innerWidth <= 1024;
         if (!map.getLayer('highlight-layer'))
             map.addLayer({ id:'highlight-layer', type:'line', source:'netascore', 'source-layer':SOURCE_LAYER,
                 layout:{'line-cap':'round','line-join':'round'},
                 paint:{
-                    'line-width':    isMobileMap
-                        ? ['interpolate',['linear'],['zoom'],10,3,12,4.5,14,6.5,16,9]
-                        : ['interpolate',['linear'],['zoom'],10,4,12,6,14,9,16,13],
+                    'line-width':    ['interpolate',['linear'],['zoom'],10,4,12,6,14,9,16,13],
                     'line-color':    '#ffffff',
                     'line-opacity':  1,
                 },
@@ -1387,9 +1228,7 @@ document.addEventListener('DOMContentLoaded', () => {
             map.addLayer({ id:'highlight-layer-inner', type:'line', source:'netascore', 'source-layer':SOURCE_LAYER,
                 layout:{'line-cap':'round','line-join':'round'},
                 paint:{
-                    'line-width':    isMobileMap
-                        ? ['interpolate',['linear'],['zoom'],10,1.5,12,2.5,14,4,16,5.5]
-                        : ['interpolate',['linear'],['zoom'],10,2,12,3.5,14,5.5,16,8],
+                    'line-width':    ['interpolate',['linear'],['zoom'],10,2,12,3.5,14,5.5,16,8],
                     'line-color':    highlightColorExpr(),
                     'line-opacity':  1,
                 },
@@ -1398,9 +1237,13 @@ document.addEventListener('DOMContentLoaded', () => {
         applyThreshold();
     }
 
+    // Reads currentMode live at call time — used both when the highlight layer
+    // is first created and again every time the mode toggle changes, so the
+    // selected-road highlight color always matches whichever score (walk or
+    // bike) is currently on screen instead of being frozen to page-load mode.
     function highlightColorExpr() {
         const prop = currentMode === 'walkability' ? 'index_walk_ft' : 'index_bike_ft';
-        const val  = ['coalesce', ['get', prop], -1];
+        const val  = ['coalesce', ['get', prop], -1]; // -1 = safe "no data" sentinel, never null
         return ['case',
             ['<',  val, 0],    '#9ca3af',
             ['<=', val, 0.20], '#E24B4A',
@@ -1425,11 +1268,16 @@ document.addEventListener('DOMContentLoaded', () => {
         TILESET_URL  = cfg.tilesetUrl;
         SOURCE_LAYER = cfg.sourceLayer;
 
+        // Remove the road layers + source for the previous city so the new
+        // source-layer name (which differs per case study) is picked up cleanly.
         ['highlight-layer-inner','highlight-layer','bikeability-layer','walkability-layer'].forEach(id => {
             if (map.getLayer(id)) map.removeLayer(id);
         });
         if (map.getSource('netascore')) map.removeSource('netascore');
 
+        // Reset to walkability by default whenever a new city is selected —
+        // avoids landing on a bikeability view for a dataset the user hasn't
+        // explicitly chosen that mode for yet.
         currentMode = 'walkability';
         threshold   = 0.0;
         document.querySelectorAll('.face-chip').forEach(c => c.classList.remove('fc-active'));
@@ -1442,14 +1290,24 @@ document.addEventListener('DOMContentLoaded', () => {
         const fsMode = document.getElementById('fs-hud-mode');
         if (fsMode) fsMode.innerHTML = '<i class="ti ti-walk"></i> Walkability';
 
-        const searchInputEl = document.getElementById('map-search-input');
-        if (searchInputEl) searchInputEl.placeholder = 'Search in ' + cfg.label + '…';
+        // Update the location badge to reflect the newly selected city
+        const locText = document.getElementById('map-location-text');
+        if (locText) locText.textContent = cfg.label + ', ' + cfg.country;
 
+        // Clear any pinned/hovered road detail from the previous city — an
+        // osm_id highlighted in Salzburg has no meaning in Olomouc's dataset.
         if (typeof clearPin === 'function') clearPin();
 
+        // Preserve which POI toggles were active so we can refresh them for the
+        // new city (different bbox + cache key) rather than leaving the old
+        // city's markers on screen or losing the toggle state entirely.
         const activePOITypes = [...document.querySelectorAll('.poi-chip[data-active="true"]')].map(b => b.dataset.poi);
         if (typeof clearAllPOIs === 'function') clearAllPOIs();
 
+        // Environmental layers (Land Use / Street Trees): the underlying tile
+        // source URL differs per city, so a simple show/hide toggle isn't
+        // enough — fully tear down any active layer's source before possibly
+        // re-adding it fresh for the new city.
         const activeEnvKeys = [...document.querySelectorAll('.env-chip[data-active="true"]')].map(c => c.dataset.env);
         activeEnvKeys.forEach(key => {
             const layerId  = 'env-layer-' + key;
@@ -1473,10 +1331,12 @@ document.addEventListener('DOMContentLoaded', () => {
             if (cityNote) cityNote.style.display = 'none';
         }
 
+        // Update the city switcher's own active styling
         document.querySelectorAll('.mode-btn[data-city]').forEach(btn => {
             btn.classList.toggle('active-city', btn.dataset.city === cityKey);
         });
 
+        // Show the loading overlay again while the new tileset's roads render
         const loadingOverlay = document.getElementById('map-loading-overlay');
         const loadingText    = document.getElementById('map-loading-text');
         if (loadingOverlay) { loadingOverlay.classList.remove('hidden'); if (loadingText) loadingText.textContent = 'Loading road network…'; }
@@ -1484,8 +1344,12 @@ document.addEventListener('DOMContentLoaded', () => {
         map.flyTo({ center: cfg.center, zoom: cfg.zoom, essential: true });
         addMapLayers();
 
+        // Refresh the "curious fact" / trend card to this city's own facts
         if (typeof resetCityFacts === 'function') resetCityFacts(cityKey);
 
+        // Re-trigger any POI toggles that were active before switching, so they
+        // refetch/re-render using the new city's bbox and cache key instead of
+        // just staying cleared.
         if (cfg.hasPOI) {
             activePOITypes.forEach(type => {
                 const chip = document.querySelector(`.poi-chip[data-poi="${type}"]`);
@@ -1493,6 +1357,7 @@ document.addEventListener('DOMContentLoaded', () => {
             });
         }
 
+        // Same idea for environmental layers — re-enable if the new city has them.
         if (cfg.hasEnv) {
             activeEnvKeys.forEach(key => {
                 const chip = document.querySelector(`.env-chip[data-env="${key}"]`);
@@ -1511,15 +1376,21 @@ document.addEventListener('DOMContentLoaded', () => {
         setTimeout(() => { if (loadingOverlay) loadingOverlay.classList.add('hidden'); map.off('render', checkRoadsVisible); }, 15000);
     }
 
+    // Re-add layers whenever style reloads (e.g. light ↔ dark swap)
     map.on('style.load', () => {
         addMapLayers();
+        // Restore pinned highlight
         if (pinnedId) setHighlight(pinnedId);
+        // Re-render chart with correct dark/light colours
         if (currentProps) setTimeout(() => renderChart(currentProps), 100);
     });
 
     map.on('load', () => {
         document.querySelectorAll('.maplibregl-ctrl-attrib').forEach(el => el.remove());
 
+        // Hide the loading overlay the moment roads actually become visible on
+        // screen (not when the whole source finishes loading, which can take
+        // much longer since it waits for every tile in view).
         const loadingOverlay = document.getElementById('map-loading-overlay');
         function hideLoadingOverlay() {
             if (loadingOverlay) loadingOverlay.classList.add('hidden');
@@ -1532,8 +1403,11 @@ document.addEventListener('DOMContentLoaded', () => {
             }
         }
         map.on('render', checkRoadsVisible);
+        // Safety net: never leave the user staring at a spinner forever, even if the
+        // render check is missed or the tileset genuinely fails to load.
         setTimeout(() => { hideLoadingOverlay(); map.off('render', checkRoadsVisible); }, 15000);
 
+        // Legend toggle — minimized by default, click to expand
         const mlToggle  = document.getElementById('ml-toggle');
         const mlBody    = document.getElementById('ml-body');
         const mlChevron = document.getElementById('ml-chevron');
@@ -1553,6 +1427,7 @@ document.addEventListener('DOMContentLoaded', () => {
             if (pinMarker) { pinMarker.remove(); pinMarker = null; }
         }
 
+        // Clears the pin, highlight, and resets the panel to empty
         function clearPin() {
             if (!pinnedId) return;
             setPinned(null);
@@ -1560,38 +1435,28 @@ document.addEventListener('DOMContentLoaded', () => {
             showEmpty();
         }
 
+        // Snap slider + chip to match the score tier of a clicked road
         function snapSliderToScore(score) {
+            // <= boundaries, matching scoreColor()/scoreLabel() exactly — using
+            // strict < here previously meant a score of exactly e.g. 0.60 could
+            // get labeled "Moderate" by scoreLabel but snap to the "Good" chip.
             const chipIndex = score <= 0.2 ? 0 : score <= 0.4 ? 1 : score <= 0.6 ? 2 : score <= 0.8 ? 3 : 4;
             const range = CHIP_RANGES[chipIndex];
-            // Purely a visual indicator of which tier this specific road falls
-            // into — highlight the matching chip, move the slider marker, and
-            // show the tier label. Deliberately does NOT touch the global
-            // threshold/thresholdMax state or call applyThreshold(): clicking a
-            // road to inspect it should never hide other tiers/roads on the
-            // map. Only an actual chip click (or dragging the slider) should
-            // ever filter what's visible.
+            threshold      = range.min;
+            thresholdMax   = range.max;
+            thresholdLabel = range.label;
+            // Activate the matching chip
             document.querySelectorAll('.face-chip').forEach((c, i) => {
                 c.classList.toggle('fc-active', i === chipIndex);
             });
+            document.getElementById('clear-filter').style.display = 'block';
+            // Move slider thumb to the start of the tier range
             const mk = document.getElementById('legend-marker');
             if (mk) mk.style.left = (range.min * 100).toFixed(1) + '%';
-            const el = document.getElementById('threshold-value');
-            if (el) el.textContent = range.label;
+            applyThreshold();
         }
 
-        // Query a small box around the pointer instead of the exact pixel —
-        // this is what actually makes clicking thin road lines forgiving.
-        // Used for click only; hover is back to the original simple
-        // point-query behavior (the highlight-on-hover + throttling
-        // experiment was causing noticeable lag, so it's reverted).
-        const HIT_PAD = 8; // px in every direction, ~16x16 target
-        function queryRoadsNear(point) {
-            return map.queryRenderedFeatures(
-                [[point.x - HIT_PAD, point.y - HIT_PAD], [point.x + HIT_PAD, point.y + HIT_PAD]],
-                { layers: ['walkability-layer', 'bikeability-layer'] }
-            );
-        }
-
+        // HOVER — always update panel and tooltip
         map.on('mousemove', e => {
             const feats = map.queryRenderedFeatures(e.point, { layers:['walkability-layer','bikeability-layer'] });
             if (!feats.length) {
@@ -1603,7 +1468,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 }, 150);
                 return;
             }
-            map.getCanvas().style.cursor = 'pointer';
+            map.getCanvas().style.cursor = 'crosshair';
             const props = feats[0].properties; const osmId = String(props.osm_id);
             buildTooltip(props, e.originalEvent.clientX, e.originalEvent.clientY);
             if (osmId === lastHoverId) return;
@@ -1622,18 +1487,22 @@ document.addEventListener('DOMContentLoaded', () => {
             }, 200);
         });
 
+        // CLICK — pin/unpin to keep panel on mouseleave
         map.on('click', e => {
+            // Ignore clicks on POI markers or MapLibre popup elements
             const t = e.originalEvent.target;
             if (t.closest('.poi-map-marker') || t.closest('.maplibregl-popup') || t.closest('.mapboxgl-popup')) return;
-            const feats = queryRoadsNear(e.point);
+            const feats = map.queryRenderedFeatures(e.point, { layers:['walkability-layer','bikeability-layer'] });
             if (!feats.length) { setPinned(null); setHighlight(null); showEmpty(); return; }
             const props = feats[0].properties; const osmId = String(props.osm_id);
             if (pinnedId === osmId) {
+                // Second click on same road = deselect
                 setPinned(null);
                 setHighlight(null);
             } else {
                 setPinned(props);
                 setHighlight(osmId);
+                // Snap slider to the score tier of the clicked road
                 const scoreVal = props[currentMode === 'walkability' ? 'index_walk_ft' : 'index_bike_ft'];
                 if (scoreVal !== null && scoreVal !== undefined) snapSliderToScore(scoreVal);
             }
@@ -1641,10 +1510,14 @@ document.addEventListener('DOMContentLoaded', () => {
         });
 
         ['walkability-layer','bikeability-layer'].forEach(id => {
-            map.on('mouseenter', id, () => { map.getCanvas().style.cursor = 'pointer'; });
+            map.on('mouseenter', id, () => { map.getCanvas().style.cursor = 'crosshair'; });
             map.on('mouseleave', id, () => { map.getCanvas().style.cursor = ''; });
         });
 
+        // =========================================================
+        // POI LAYER MANAGEMENT
+        // =========================================================
+        // bbox format: south,west,north,east — same convention as fetch-poi-data.mjs
         const POI_BBOX = {
             salzburg: '47.77,12.98,47.84,13.13',
             olomouc:  '49.55,17.15,49.65,17.35',
@@ -1652,11 +1525,13 @@ document.addEventListener('DOMContentLoaded', () => {
 
         const POI_CONFIG = {
             schools: {
+                // Only primary and secondary schools — not yoga, music, driving etc.
                 query: bbox => `[out:json][timeout:25];(node["amenity"="school"]["school:level"!="preschool"]["isced:level"!="0"](${bbox});way["amenity"="school"]["school:level"!="preschool"]["isced:level"!="0"](${bbox});node["amenity"="school"]["name"~"Gymnasium|Mittelschule|Hauptschule|Volksschule|Realschule|Schule|NMS|AHS|BHS|BMS|HTL|HAK|HLW",i](${bbox});way["amenity"="school"]["name"~"Gymnasium|Mittelschule|Hauptschule|Volksschule|Realschule|Schule|NMS|AHS|BHS|BMS|HTL|HAK|HLW",i](${bbox}););out center;`,
                 color: '#DC2626', bg: '#FEE2E2',
                 label: 'School'
             },
             sports: {
+                // Sports facilities relevant for 12-15 year olds
                 query: bbox => `[out:json][timeout:25];(node["leisure"="pitch"](${bbox});way["leisure"="pitch"](${bbox});node["leisure"="sports_centre"](${bbox});way["leisure"="sports_centre"](${bbox});node["leisure"="stadium"](${bbox});way["leisure"="stadium"](${bbox}););out center;`,
                 color: '#EA580C', bg: '#FFF7ED',
                 label: 'Sports facility'
@@ -1673,8 +1548,9 @@ document.addEventListener('DOMContentLoaded', () => {
             }
         };
 
-        const poiCache   = {};
-        const poiMarkers = {};
+        const poiCache   = {}; // cache fetched GeoJSON per type
+        const poiMarkers = {}; // store Mapbox markers per type for removal
+        // Custom POI tooltip — plain HTML div, never triggers map pan
         const poiTooltip = document.createElement('div');
         poiTooltip.id = 'poi-tooltip';
         poiTooltip.style.cssText = `
@@ -1698,6 +1574,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 '<div style="font-size:10px;font-weight:700;color:' + iconCfg.color + ';margin-bottom:3px;text-transform:uppercase;letter-spacing:0.05em">' +
                 '<i class="ti ' + iconCfg.icon + '"></i> ' + cfgLabel + '</div>' +
                 '<div style="font-size:12px;font-weight:600;color:#1f2937">' + name + '</div>';
+            // Position relative to map wrapper
             const wrapper = document.querySelector('.map-wrapper').getBoundingClientRect();
             const tx = x - wrapper.left + 10;
             const ty = y - wrapper.top - 60;
@@ -1710,6 +1587,7 @@ document.addEventListener('DOMContentLoaded', () => {
             poiTooltip.style.display = 'none';
         }
 
+        // Close tooltip on map click or drag
         map.on('click', () => hidePOITooltip());
         map.on('dragstart', () => hidePOITooltip());
 
@@ -1719,16 +1597,28 @@ document.addEventListener('DOMContentLoaded', () => {
             const cfg  = POI_CONFIG[type];
             const bbox = POI_BBOX[currentCity];
 
+            // 1) Prefer a pre-fetched static file (fast, no rate limits, no timeouts).
+            //    Generate these once with fetch-poi-data.mjs and upload to /data/.
             try {
                 const resp = await fetch(`data/${type}_${currentCity}.geojson`);
                 if (resp.ok) {
                     const geojson = await resp.json();
+                    if (!Array.isArray(geojson.features)) {
+                        throw new Error('static file has no valid "features" array');
+                    }
                     geojson.features = dedupePOIFeatures(geojson.features, type === 'busstops' ? 150 : 50);
+                    console.info(`POI (${type}): loaded ${geojson.features.length} features from static file.`);
                     poiCache[cacheKey] = geojson;
                     return geojson;
                 }
-            } catch (e) { /* fall through to live fetch */ }
+            } catch (e) {
+                // Previously silent — logging this makes it obvious when a
+                // static file exists but is malformed, vs. genuinely missing
+                // (a 404 is expected/fine and falls through quietly either way).
+                console.warn(`POI (${type}): static file unusable (${e.message}), falling back to Overpass.`);
+            }
 
+            // 2) Fall back to live Overpass if the static file is missing/unreachable.
             const endpoints = [
                 'https://overpass.kumi.systems/api/interpreter',
                 'https://overpass-api.de/api/interpreter',
@@ -1739,7 +1629,7 @@ document.addEventListener('DOMContentLoaded', () => {
             for (const endpoint of endpoints) {
                 try {
                     const controller = new AbortController();
-                    const timeout = setTimeout(() => controller.abort(), 20000);
+                    const timeout = setTimeout(() => controller.abort(), 20000); // 20s timeout
                     const resp = await fetch(endpoint + '?data=' + encodeURIComponent(query), { signal: controller.signal });
                     clearTimeout(timeout);
                     if (!resp.ok) continue;
@@ -1761,13 +1651,17 @@ document.addEventListener('DOMContentLoaded', () => {
             }).filter(Boolean);
 
             const geojson = { type:'FeatureCollection', features: dedupePOIFeatures(features, type === 'busstops' ? 150 : 50) };
+            console.info(`POI (${type}): loaded ${geojson.features.length} features from Overpass.`);
             poiCache[cacheKey] = geojson;
             return geojson;
         }
 
         function dedupePOIFeatures(features, gridMeters = 50) {
+            // Overpass often returns the same real-world POI twice (e.g. as both a
+            // node and a way, or matched by two different tag filters). Collapse
+            // features that share a normalized name and sit within ~gridMeters of each other.
             const kept = [];
-            const cellSize = 111320 / gridMeters;
+            const cellSize = 111320 / gridMeters; // rough meters-per-degree at this latitude
             const round = (n) => Math.round(n * cellSize) / cellSize;
             const normName = (s) => (s || '').trim().toLowerCase();
             for (const f of features) {
@@ -1778,6 +1672,7 @@ document.addEventListener('DOMContentLoaded', () => {
             return kept.map(k => k.feature);
         }
 
+        // Spinner in POI heading
         const poiSpinner = document.getElementById('poi-spinner');
 
         function showPOILoading(show) {
@@ -1799,85 +1694,88 @@ document.addEventListener('DOMContentLoaded', () => {
             }
             poiMarkers[type] = [];
 
+            let skipped = 0;
             geojson.features.forEach(feat => {
-                const [lng, lat] = feat.geometry.coordinates;
-                const name = feat.properties.name;
+                try {
+                    // Only Point geometry is directly usable. If a feature ever
+                    // comes through as a Polygon/MultiPolygon (e.g. a park saved
+                    // as its OSM way outline in a pre-generated static file
+                    // instead of being reduced to a center point), approximate
+                    // its location with the centroid of its outer ring instead
+                    // of silently producing garbage coordinates.
+                    let lng, lat;
+                    const geom = feat.geometry;
+                    if (!geom) throw new Error('feature has no geometry');
+                    if (geom.type === 'Point') {
+                        [lng, lat] = geom.coordinates;
+                    } else if (geom.type === 'Polygon' || geom.type === 'MultiPolygon') {
+                        const ring = geom.type === 'Polygon' ? geom.coordinates[0] : geom.coordinates[0][0];
+                        const sum = ring.reduce((acc, c) => [acc[0] + c[0], acc[1] + c[1]], [0, 0]);
+                        lng = sum[0] / ring.length;
+                        lat = sum[1] / ring.length;
+                    } else {
+                        throw new Error('unsupported geometry type: ' + geom.type);
+                    }
 
-                const el = document.createElement('div');
-                el.className = 'poi-map-marker';
-                el.innerHTML = `<i class="ti ${iconCfg.icon}"></i>`;
-                el.style.cssText = `
-                    width: 10px;
-                    height: 10px;
-                    border-radius: 50%;
-                    background: ${iconCfg.bg};
-                    border: 1px solid ${iconCfg.color};
-                    display: flex;
-                    align-items: center;
-                    justify-content: center;
-                    font-size: 6px;
-                    color: ${iconCfg.color};
-                    cursor: pointer;
-                    box-shadow: 0 1px 2px rgba(0,0,0,0.2);
-                    flex-shrink: 0;
-                    pointer-events: all;
-                    transition: transform 0.15s ease;
-                `;
-                el.addEventListener('mouseenter', () => {
-                    el.style.boxShadow = '0 2px 6px rgba(0,0,0,0.3)';
-                    el.style.borderWidth = '1.5px';
-                    el.style.transform = (el.dataset.baseScale || '') + ' scale(1.35)';
-                });
-                el.addEventListener('mouseleave', () => {
-                    el.style.boxShadow = '0 1px 2px rgba(0,0,0,0.2)';
-                    el.style.borderWidth = '1px';
-                    el.style.transform = el.dataset.baseScale || '';
-                });
+                    if (!Number.isFinite(lng) || !Number.isFinite(lat)) {
+                        throw new Error('non-finite coordinates');
+                    }
 
-                // Tooltip is meant to stay pinned once clicked (dismissed
-                // only by clicking elsewhere on the map, or dragging) — no
-                // mouseleave auto-hide timer here anymore, since that was
-                // silently closing it seconds after opening regardless of
-                // the click-to-pin intent.
-                el.addEventListener('click', e => {
-                    e.stopPropagation();
-                    e.preventDefault();
-                    const rect = el.getBoundingClientRect();
-                    showPOITooltip(rect.left + rect.width / 2, rect.top, iconCfg, cfg.label, name);
-                });
+                    const name = (feat.properties && feat.properties.name) || cfg.label;
 
-                const marker = new maplibregl.Marker({ element: el, anchor: 'center' })
-                    .setLngLat([lng, lat])
-                    .addTo(map);
+                    // Solid filled circle marker with Tabler icon
+                    const el = document.createElement('div');
+                    el.className = 'poi-map-marker';
+                    el.innerHTML = `<i class="ti ${iconCfg.icon}"></i>`;
+                    el.style.cssText = `
+                        width: 10px;
+                        height: 10px;
+                        border-radius: 50%;
+                        background: ${iconCfg.bg};
+                        border: 1px solid ${iconCfg.color};
+                        display: flex;
+                        align-items: center;
+                        justify-content: center;
+                        font-size: 6px;
+                        color: ${iconCfg.color};
+                        cursor: pointer;
+                        box-shadow: 0 1px 2px rgba(0,0,0,0.2);
+                        flex-shrink: 0;
+                        pointer-events: all;
+                    `;
+                    el.addEventListener('mouseenter', () => {
+                        el.style.boxShadow = '0 2px 6px rgba(0,0,0,0.3)';
+                        el.style.borderWidth = '1.5px';
+                    });
+                    el.addEventListener('mouseleave', () => {
+                        el.style.boxShadow = '0 1px 2px rgba(0,0,0,0.2)';
+                        el.style.borderWidth = '1px';
+                    });
 
-                poiMarkers[type].push(marker);
+                    el.addEventListener('click', e => {
+                        e.stopPropagation();
+                        e.preventDefault();
+                        const rect = el.getBoundingClientRect();
+                        showPOITooltip(rect.left + rect.width / 2, rect.top, iconCfg, cfg.label, name);
+                    });
+
+                    const marker = new maplibregl.Marker({ element: el, anchor: 'center' })
+                        .setLngLat([lng, lat])
+                        .addTo(map);
+
+                    poiMarkers[type].push(marker);
+                } catch (featErr) {
+                    // One bad feature (bad geometry, missing coordinates, etc.)
+                    // should never take down the rest of the batch — skip it
+                    // and keep going instead of throwing out of the forEach,
+                    // which previously meant ALL markers after the first bad
+                    // one (or all of them, if it was first) silently vanished.
+                    skipped++;
+                    console.warn(`POI (${type}) skipped one malformed feature:`, featErr.message, feat);
+                }
             });
-
-            updatePOIMarkerScale();
+            if (skipped) console.warn(`POI (${type}): ${skipped} of ${geojson.features.length} features skipped due to bad data.`);
         }
-
-        // POIs grow/shrink with zoom instead of staying a fixed pixel size,
-        // and disappear below POI_MIN_ZOOM entirely — dozens of fixed-size
-        // dots at a zoomed-out view is exactly the clutter that made them
-        // hard to use; they should only show once you're zoomed in enough
-        // to actually place them against the street.
-        const POI_MIN_ZOOM = 14;
-        function updatePOIMarkerScale() {
-            const zoom  = map.getZoom();
-            const show  = zoom >= POI_MIN_ZOOM;
-            // Scale grows gently from 0.85x at the cutoff to 1.25x well zoomed in.
-            const scale = Math.max(0.85, Math.min(1.25, 0.85 + (zoom - POI_MIN_ZOOM) * 0.08));
-            const transformVal = `scale(${scale})`;
-            Object.values(poiMarkers).forEach(list => {
-                list.forEach(m => {
-                    const el = m.getElement();
-                    el.dataset.baseScale = transformVal;
-                    el.style.transform = transformVal;
-                    el.style.display = show ? 'flex' : 'none';
-                });
-            });
-        }
-        map.on('zoom', updatePOIMarkerScale);
 
         function removePOILayer(type) {
             if (poiMarkers[type]) {
@@ -1886,6 +1784,7 @@ document.addEventListener('DOMContentLoaded', () => {
             }
         }
 
+        // Clear all POIs
         function clearAllPOIs() {
             Object.keys(POI_CONFIG).forEach(type => {
                 removePOILayer(type);
@@ -1899,6 +1798,7 @@ document.addEventListener('DOMContentLoaded', () => {
         const clearPOIBtn = document.getElementById('clear-poi-btn');
         if (clearPOIBtn) clearPOIBtn.addEventListener('click', clearAllPOIs);
 
+        // Wire up toggle buttons
         document.querySelectorAll('.poi-chip').forEach(btn => {
             btn.addEventListener('click', async () => {
                 const type   = btn.dataset.poi;
@@ -1908,6 +1808,7 @@ document.addEventListener('DOMContentLoaded', () => {
                     btn.dataset.active = 'false';
                     btn.classList.remove('active');
                     removePOILayer(type);
+                    // Hide clear button if no POIs active
                     const anyActive = [...document.querySelectorAll('.poi-chip')].some(b => b.dataset.active === 'true');
                     const clearPOI = document.getElementById('clear-poi');
                     if (clearPOI) clearPOI.style.display = anyActive ? 'block' : 'none';
@@ -1923,7 +1824,7 @@ document.addEventListener('DOMContentLoaded', () => {
                         showPOILoading(false);
                         addPOILayer(type, geojson);
                     } catch(err) {
-                        console.error('POI fetch failed:', err);
+                        console.error(`POI (${type}): failed to load or display:`, err);
                         showPOILoading(false);
                         btn.dataset.active = 'false';
                         btn.classList.remove('active');
@@ -1960,6 +1861,7 @@ document.addEventListener('DOMContentLoaded', () => {
         excellent:'#378ADD',
     };
 
+    // ── DOM refs ───────────────────────────
     const openBtn   = document.getElementById('map-export-btn');
     const panel     = document.getElementById('export-panel');
     const closeBtn  = document.getElementById('export-panel-close');
@@ -1968,6 +1870,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     if (!openBtn || !panel) return;
 
+    // ── Open / close ───────────────────────
     function openPanel() {
         panel.classList.add('open');
     }
@@ -1983,35 +1886,48 @@ document.addEventListener('DOMContentLoaded', () => {
     });
     panel.addEventListener('click', e => e.stopPropagation());
 
+    // ── Format buttons ─────────────────────
     btnPdf.addEventListener('click', () => doExport('pdf'));
     btnPng.addEventListener('click', () => doExport('png'));
 
+    // ══════════════════════════════════════
+    // CORE EXPORT FUNCTION
+    // ══════════════════════════════════════
     async function doExport(format) {
+        // Export always mirrors exactly what's currently shown on the live map —
+        // no separate mode or road-filter choice in the export panel.
         const isWalk   = currentMode === 'walkability';
-        const mapTitle = isWalk ? 'Child Walkability: Salzburg' : 'Child Bikeability: Salzburg';
+        const mapTitle = isWalk ? 'Child Walkability — Salzburg' : 'Child Bikeability — Salzburg';
         const tiers    = ['poor','average','moderate','good','excellent'];
 
+        // 1. Grab the map canvas as-is (whatever filters are already live on the map)
         const mapCanvas = map.getCanvas();
         const W = mapCanvas.width;
         const H = mapCanvas.height;
 
+        // 2. Build the output canvas with map elements
         const canvas  = document.createElement('canvas');
-        const HEADER  = 72;
-        const FOOTER  = 48;
-        const SIDEBAR = 0;
+        const HEADER  = 72;   // px — dark blue header bar
+        const FOOTER  = 48;   // px — attribution footer
+        const SIDEBAR = 0;    // no sidebar — keep it clean
         canvas.width  = W;
         canvas.height = H + HEADER + FOOTER;
         const ctx = canvas.getContext('2d');
 
+        // ── Draw map image ──────────────────
         ctx.drawImage(mapCanvas, 0, HEADER, W, H);
 
+        // ── HEADER ──────────────────────────
         ctx.fillStyle = '#1a3a5c';
         ctx.fillRect(0, 0, W, HEADER);
 
+        // Draw logo — load from img tag already in DOM
         const logoImg = document.querySelector('.header-logo, img[alt="NetAScore4Kids Logo"], img[src*="logo"]');
         const LOGO_MAX_H = 44;
         const LOGO_X     = 18;
 
+        // Preserve the logo's natural aspect ratio instead of forcing a square,
+        // otherwise non-square logos get squashed/compacted in the export.
         let logoDrawW = LOGO_MAX_H;
         if (logoImg && logoImg.complete && logoImg.naturalWidth > 0) {
             const aspect = logoImg.naturalWidth / logoImg.naturalHeight;
@@ -2023,22 +1939,27 @@ document.addEventListener('DOMContentLoaded', () => {
         }
         const TEXT_X = LOGO_X + logoDrawW + 12;
 
+        // Main title — NetAScore4Teens
         ctx.fillStyle = '#ffffff';
         ctx.font      = 'bold 16px Nunito, sans-serif';
         ctx.fillText('NetAScoreTeens', TEXT_X, 20);
 
+        // Mode subheading — Walkability / Bikeability
         const modeLabel = isWalk ? 'Walkability' : 'Bikeability';
         ctx.font      = '12px Nunito, sans-serif';
         ctx.fillStyle = 'rgba(255,255,255,0.70)';
         ctx.fillText(modeLabel, TEXT_X, 35);
 
+        // Subtitle — two lines
         ctx.font      = '10px Nunito, sans-serif';
         ctx.fillStyle = '#7aaace';
         ctx.fillText('Mobility Lab · Paris Lodron University of Salzburg · Palacký University of Olomouc', TEXT_X, 52);
         ctx.fillText('Developed by Amna Azeem · Copernicus Master in Digital Earth · 2026', TEXT_X, 65);
 
+        // ── LEGEND (top-left of map area) ───
         const LX = 18, LY = HEADER + 16;
         const LW = 155, LH = 128;
+        // Frosted background
         ctx.fillStyle = 'rgba(255,255,255,0.92)';
         roundRect(ctx, LX, LY, LW, LH, 8);
         ctx.fill();
@@ -2069,15 +1990,18 @@ document.addEventListener('DOMContentLoaded', () => {
             ctx.fillText(row.label, LX + 29, ry + 4);
         });
 
+        // Source note under legend
         ctx.fillStyle = '#9ca3af';
         ctx.font      = '9px Nunito, sans-serif';
         ctx.fillText('Source: NetAScore model · OSM', LX + 10, LY + LH - 8);
 
+        // ── SCALE BAR (bottom-left of map) ──
         const SX = 18, SY = HEADER + H - 36;
         ctx.fillStyle = 'rgba(255,255,255,0.92)';
         roundRect(ctx, SX, SY, 120, 28, 6);
         ctx.fill();
 
+        // Alternating black/white scale segments
         const segW = 36;
         [[0,'#333'],[1,'#fff'],[2,'#333']].forEach(([i, fill]) => {
             ctx.fillStyle = fill;
@@ -2090,6 +2014,7 @@ document.addEventListener('DOMContentLoaded', () => {
         ctx.fillText('500', SX + 8 + segW - 4, SY + 24);
         ctx.fillText('1000 m', SX + 8 + segW * 2, SY + 24);
 
+        // ── NORTH ARROW (top-right of map) ──
         const NX = W - 38, NY = HEADER + 16;
         ctx.fillStyle = 'rgba(255,255,255,0.92)';
         ctx.beginPath();
@@ -2104,6 +2029,7 @@ document.addEventListener('DOMContentLoaded', () => {
         ctx.fillText('N', NX, NY + 16);
         ctx.textAlign = 'left';
 
+        // ── FOOTER ──────────────────────────
         ctx.fillStyle = '#f5f5f3';
         ctx.fillRect(0, HEADER + H, W, FOOTER);
         ctx.fillStyle = '#e5e7eb';
@@ -2114,6 +2040,7 @@ document.addEventListener('DOMContentLoaded', () => {
         ctx.fillText('© 2026 Amna Azeem · Paris Lodron University of Salzburg · Palacký University of Olomouc · Copernicus Master in Digital Earth · EU Co-funded', 16, HEADER + H + 18);
         ctx.fillText('Map data © OpenFreeMap · © OpenStreetMap contributors · NetAScore model · EPSG:4326 · June 2026', 16, HEADER + H + 34);
 
+        // Right side of footer — filter note
         const filterNote = tiers.length === 5
             ? 'All roads shown'
             : 'Showing: ' + tiers.map(t => t.charAt(0).toUpperCase() + t.slice(1)).join(', ');
@@ -2122,6 +2049,7 @@ document.addEventListener('DOMContentLoaded', () => {
         ctx.fillText(isWalk ? 'Walking mode' : 'Cycling mode', W - 16, HEADER + H + 34);
         ctx.textAlign = 'left';
 
+        // ── Export ──────────────────────────
         const slug = mapTitle.toLowerCase().replace(/[^a-z0-9]+/g, '_');
         if (format === 'png') {
             canvas.toBlob(blob => {
@@ -2131,6 +2059,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 a.click();
             }, 'image/png');
         } else {
+            // PDF via browser print — open canvas in new tab
             canvas.toBlob(blob => {
                 const url = URL.createObjectURL(blob);
                 const win = window.open('', '_blank');
@@ -2157,6 +2086,7 @@ document.addEventListener('DOMContentLoaded', () => {
         closePanel();
     }
 
+    // ── Utility: rounded rect path ─────────
     function roundRect(ctx, x, y, w, h, r) {
         ctx.beginPath();
         ctx.moveTo(x + r, y);
@@ -2176,6 +2106,7 @@ document.addEventListener('DOMContentLoaded', () => {
 // ENVIRONMENTAL LAYERS — LCU + STL
 // ══════════════════════════════════════════
 document.addEventListener('DOMContentLoaded', () => {
+    // Wait for map to be initialised
     const envInit = setInterval(() => {
         if (!map || !map.loaded()) return;
         clearInterval(envInit);
@@ -2238,6 +2169,10 @@ function initEnvLayers() {
                 'fill-pattern': 'tree-pattern',
                 'fill-opacity': 0.75
             },
+            // At low zoom, thousands of tiny tree-footprint polygons each get
+            // stamped with the full-size icon tile, producing a noisy/moiré mess.
+            // Show a flat, smooth green fill until zoomed in enough to make out
+            // individual canopies, then switch to the icon pattern.
             patternMinZoom: 15,
             lowZoomPaint: {
                 'fill-color':   '#5b7a4f',
@@ -2246,15 +2181,24 @@ function initEnvLayers() {
         }
     };
 
-    let envOpacity    = 0.35;  // Land Use
-    let envOpacityStl = 0.75;  // Street Trees — separate, independent slider
+    let envOpacity = 0.35;
 
+    // ── Generate a repeating tree-icon pattern for the Street Trees layer,
+    // instead of a flat green fill (much more intuitive at a glance) ──
+    // NOTE: fill-pattern always tiles edge-to-edge, so it can never be
+    // perfectly non-repeating — that's a hard limitation of the technique.
+    // What we CAN do is make the repeating unit itself look irregular: instead
+    // of one tree stamped in a perfect grid, each tile holds a small cluster
+    // of trees at varied positions/sizes. The eye reads "scattered trees"
+    // instead of "checkerboard" because the repeat is much harder to spot.
     function buildTreePatternImage() {
-        const size = 110;
+        const size = 110; // bigger tile → each repeat holds a whole cluster
         const canvas = document.createElement('canvas');
         canvas.width = size; canvas.height = size;
         const ctx = canvas.getContext('2d');
 
+        // Fixed "random-looking" tree placements — kept well inset from the
+        // tile edges so nothing gets clipped or creates a visible seam.
         const trees = [
             { x: 20, y: 26, r: 8  },
             { x: 68, y: 18, r: 6.5},
@@ -2265,6 +2209,7 @@ function initEnvLayers() {
         ];
 
         trees.forEach(t => {
+            // Canopy (two-tone for depth)
             ctx.fillStyle = '#5b7a4f';
             ctx.beginPath();
             ctx.arc(t.x, t.y - t.r * 0.5, t.r, 0, Math.PI * 2);
@@ -2273,6 +2218,7 @@ function initEnvLayers() {
             ctx.beginPath();
             ctx.arc(t.x - t.r * 0.4, t.y - t.r * 0.9, t.r * 0.7, 0, Math.PI * 2);
             ctx.fill();
+            // Trunk
             ctx.fillStyle = '#78350f';
             ctx.fillRect(t.x - 1.5, t.y + t.r * 0.25, 3, t.r * 0.75);
         });
@@ -2288,6 +2234,9 @@ function initEnvLayers() {
         }
     });
 
+    // Fixed bottom-to-top stacking order for environmental layers, both always
+    // kept below the road layers. Ensures Street Trees renders above Land Use
+    // regardless of which chip the user happens to toggle on first.
     const ENV_STACK_ORDER = ['lcu', 'stl'];
     function getEnvBeforeId(key) {
         const idx = ENV_STACK_ORDER.indexOf(key);
@@ -2313,8 +2262,12 @@ function initEnvLayers() {
         }
 
         if (!map.getLayer(layerId)) {
+            // Insert at the correct point in the fixed stack order, always below roads
             const beforeId = getEnvBeforeId(key);
 
+            // Layers with a lowZoomPaint (e.g. street trees) get a flat fill for
+            // zoomed-out views, then hand off to the detailed pattern fill once
+            // zoomed in past patternMinZoom.
             if (cfg.lowZoomPaint) {
                 map.addLayer({
                     id:     layerId + '-lowzoom',
@@ -2341,6 +2294,8 @@ function initEnvLayers() {
             }
         }
 
+        // Show a spinner until this specific source's tiles have actually loaded —
+        // these files are large, so first load (cold CDN cache) can take a moment.
         if (spinner && !sourceAlreadyExists) {
             spinner.style.display = 'inline-block';
             const checkLoaded = e => {
@@ -2364,40 +2319,32 @@ function initEnvLayers() {
         }
     }
 
-    function updateEnvOpacityLcu(opacity) {
+    function updateEnvOpacity(opacity) {
         envOpacity = opacity / 100;
-        const layerId = 'env-layer-lcu';
-        if (map.getLayer(layerId)) {
-            map.setPaintProperty(layerId, 'fill-opacity', envOpacity);
-        }
-        if (map.getLayer(layerId + '-lowzoom')) {
-            map.setPaintProperty(layerId + '-lowzoom', 'fill-opacity', envOpacity);
-        }
+        Object.keys(ENV_LAYERS).forEach(key => {
+            const layerId = 'env-layer-' + key;
+            if (map.getLayer(layerId)) {
+                map.setPaintProperty(layerId, 'fill-opacity', envOpacity);
+            }
+            if (map.getLayer(layerId + '-lowzoom')) {
+                map.setPaintProperty(layerId + '-lowzoom', 'fill-opacity', envOpacity);
+            }
+        });
     }
 
-    function updateEnvOpacityStl(opacity) {
-        envOpacityStl = opacity / 100;
-        const layerId = 'env-layer-stl';
-        if (map.getLayer(layerId)) {
-            map.setPaintProperty(layerId, 'fill-opacity', envOpacityStl);
-        }
-        if (map.getLayer(layerId + '-lowzoom')) {
-            map.setPaintProperty(layerId + '-lowzoom', 'fill-opacity', envOpacityStl);
-        }
-    }
-
+    // Re-add layers after style swap (dark mode)
     map.on('style.load', () => {
         document.querySelectorAll('.env-chip[data-active="true"]').forEach(chip => {
             addEnvLayer(chip.dataset.env);
         });
     });
 
+    // Wire up toggle chips
     document.querySelectorAll('.env-chip').forEach(chip => {
         chip.addEventListener('click', () => {
             const key    = chip.dataset.env;
             const active = chip.dataset.active === 'true';
-            const opRowLcu = document.getElementById('env-opacity-row');
-            const opRowStl = document.getElementById('env-opacity-row-stl');
+            const opRow  = document.getElementById('env-opacity-row');
             const lcuLegend = document.getElementById('lcu-panel-legend');
             const stlLegend = document.getElementById('stl-panel-legend');
 
@@ -2405,16 +2352,14 @@ function initEnvLayers() {
                 chip.dataset.active = 'false';
                 chip.classList.remove('active');
                 removeEnvLayer(key);
+                const anyActive = [...document.querySelectorAll('.env-chip')].some(c => c.dataset.active === 'true');
+                if (opRow) opRow.style.display = anyActive ? 'flex' : 'none';
             } else {
                 chip.dataset.active = 'true';
                 chip.classList.add('active');
                 addEnvLayer(key);
+                if (opRow) opRow.style.display = 'flex';
             }
-
-            // Each layer has its own independent opacity row — shown only
-            // while that specific layer's chip is active.
-            if (key === 'lcu' && opRowLcu) opRowLcu.style.display = chip.dataset.active === 'true' ? 'flex' : 'none';
-            if (key === 'stl' && opRowStl) opRowStl.style.display = chip.dataset.active === 'true' ? 'flex' : 'none';
 
             if (key === 'lcu' && lcuLegend) {
                 lcuLegend.style.display = chip.dataset.active === 'true' ? 'flex' : 'none';
@@ -2425,6 +2370,8 @@ function initEnvLayers() {
         });
     });
 
+    // Hover tooltip for Land Use / Street Trees — only when a road isn't already
+    // being hovered (road details take priority in the main tooltip/panel).
     const envTooltip = document.getElementById('env-tooltip');
     if (envTooltip) {
         map.on('mousemove', e => {
@@ -2455,199 +2402,13 @@ function initEnvLayers() {
         map.on('mouseleave', () => { envTooltip.style.display = 'none'; });
     }
 
+    // Opacity slider
     const slider = document.getElementById('env-opacity-slider');
     const valEl  = document.getElementById('env-opacity-value');
     if (slider) {
         slider.addEventListener('input', () => {
             valEl.textContent = slider.value + '%';
-            updateEnvOpacityLcu(parseInt(slider.value));
-        });
-    }
-
-    const sliderStl = document.getElementById('env-opacity-slider-stl');
-    const valElStl  = document.getElementById('env-opacity-value-stl');
-    if (sliderStl) {
-        sliderStl.addEventListener('input', () => {
-            valElStl.textContent = sliderStl.value + '%';
-            updateEnvOpacityStl(parseInt(sliderStl.value));
+            updateEnvOpacity(parseInt(slider.value));
         });
     }
 }
-
-// ══════════════════════════════════════════════════════════════════
-// MOBILE BOTTOM SHEET — self-contained, only touches DOM/classList.
-// Relocates existing content (never duplicates it) so there is exactly
-// one source of truth for both desktop and mobile.
-// ══════════════════════════════════════════════════════════════════
-document.addEventListener('DOMContentLoaded', () => {
-
-    function isMobile() { return window.matchMedia('(max-width: 1024px)').matches; }
-
-    const sheet      = document.getElementById('mobile-sheet');
-    const handle     = document.getElementById('mobile-sheet-handle');
-    const tabbar     = document.getElementById('mobile-tabbar');
-    const paneRoad   = document.getElementById('mobile-pane-road');
-    const paneControls  = document.getElementById('mobile-pane-controls');
-    if (!sheet || !paneRoad || !paneControls) return;
-
-    // ── Relocate existing content (mobile/tablet only) ──
-    const detailEmpty    = document.getElementById('detail-empty');
-    const detailLoaded   = document.getElementById('detail-loaded');
-    const panelContent   = document.querySelector('.dashboard-bg .panel-content');
-
-    const detailOriginalParent  = detailEmpty  ? detailEmpty.parentElement  : null;
-    const panelOriginalParent   = panelContent ? panelContent.parentElement : null;
-    const panelOriginalNext     = panelContent ? panelContent.nextSibling   : null;
-
-    let creditLine = null;
-
-    function placeContentForViewport() {
-        if (isMobile()) {
-            if (detailEmpty  && detailEmpty.parentElement  !== paneRoad)  paneRoad.appendChild(detailEmpty);
-            if (detailLoaded && detailLoaded.parentElement !== paneRoad)  paneRoad.appendChild(detailLoaded);
-            if (panelContent && panelContent.parentElement !== paneControls) {
-                paneControls.appendChild(panelContent);
-                if (!creditLine) {
-                    creditLine = document.createElement('div');
-                    creditLine.className = 'mobile-credit-line';
-                    creditLine.textContent = 'NetAScore4Teens · Developed by Amna Azeem © 2026';
-                }
-                paneControls.appendChild(creditLine);
-            }
-        } else {
-            if (detailEmpty && detailOriginalParent && detailEmpty.parentElement !== detailOriginalParent) {
-                detailOriginalParent.appendChild(detailEmpty);
-            }
-            if (detailLoaded && detailOriginalParent && detailLoaded.parentElement !== detailOriginalParent) {
-                detailOriginalParent.appendChild(detailLoaded);
-            }
-            if (panelContent && panelOriginalParent && panelContent.parentElement !== panelOriginalParent) {
-                panelOriginalParent.insertBefore(panelContent, panelOriginalNext);
-            }
-            if (creditLine && creditLine.parentElement) creditLine.parentElement.removeChild(creditLine);
-        }
-    }
-    placeContentForViewport();
-    let resizeTimer = null;
-    window.addEventListener('resize', () => {
-        clearTimeout(resizeTimer);
-        resizeTimer = setTimeout(placeContentForViewport, 150);
-    });
-
-    // ── Tab switching ──
-    function switchTab(name) {
-        document.querySelectorAll('.mobile-tab').forEach(btn => {
-            btn.classList.toggle('active', btn.dataset.tab === name);
-        });
-        paneRoad.classList.toggle('active', name === 'road');
-        paneControls.classList.toggle('active', name === 'controls');
-    }
-    if (tabbar) {
-        tabbar.querySelectorAll('.mobile-tab').forEach(btn => {
-            btn.addEventListener('click', () => {
-                switchTab(btn.dataset.tab);
-                sheet.classList.add('expanded'); // tapping a tab implies "show me its content"
-            });
-        });
-    }
-
-    // ── Draggable sheet: swipe up/down between peek and expanded ──
-    if (handle) {
-        let dragging = false, startY = 0, startPx = 0, sheetH = 0;
-
-        function currentTranslatePx() {
-            const rect = sheet.getBoundingClientRect();
-            return rect.top - (window.innerHeight - sheetH);
-        }
-        function onDown(e) {
-            if (!isMobile()) return;
-            dragging = true;
-            sheetH   = sheet.getBoundingClientRect().height;
-            startY   = e.touches ? e.touches[0].clientY : e.clientY;
-            startPx  = Math.max(0, currentTranslatePx());
-            sheet.classList.add('dragging');
-            document.addEventListener('mousemove', onMove);
-            document.addEventListener('touchmove', onMove, { passive: false });
-            document.addEventListener('mouseup', onUp);
-            document.addEventListener('touchend', onUp);
-        }
-        function onMove(e) {
-            if (!dragging) return;
-            if (e.cancelable) e.preventDefault();
-            const y = e.touches ? e.touches[0].clientY : e.clientY;
-            let px = startPx + (y - startY);
-            px = Math.max(0, Math.min(px, sheetH));
-            sheet.style.transform = 'translateY(' + px + 'px)';
-        }
-        function onUp(e) {
-            if (!dragging) return;
-            dragging = false;
-            sheet.classList.remove('dragging');
-            sheet.style.transform = '';
-            document.removeEventListener('mousemove', onMove);
-            document.removeEventListener('touchmove', onMove);
-            document.removeEventListener('mouseup', onUp);
-            document.removeEventListener('touchend', onUp);
-
-            const y = e.changedTouches ? e.changedTouches[0].clientY : e.clientY;
-            const movedDown = y - startY;
-            if (Math.abs(movedDown) < 6) { sheet.classList.toggle('expanded'); return; }
-
-            // A deliberate swipe in either direction should be enough to
-            // decide the sheet's state — it shouldn't need to travel a
-            // quarter (or, in the old fallback math, effectively half) of
-            // the sheet's full height before it "counts". 60px (or 15% of
-            // the sheet, whichever is smaller) matches how far people
-            // actually swipe, so modest drags are no longer ignored.
-            const DISMISS_PX = Math.min(60, sheetH * 0.15);
-            if (movedDown > DISMISS_PX) sheet.classList.remove('expanded');
-            else if (movedDown < -DISMISS_PX) sheet.classList.add('expanded');
-            else {
-                // Very small residual drag: fall back to final absolute position.
-                const endPx = Math.max(0, startPx + movedDown);
-                sheet.classList.toggle('expanded', endPx < sheetH / 2);
-            }
-        }
-        handle.addEventListener('mousedown', onDown);
-        handle.addEventListener('touchstart', onDown, { passive: true });
-    }
-});
-
-// ══════════════════════════════════════════════════════════════════
-// "WORKS BETTER ON DESKTOP" TIP — deliberately as simple as possible:
-// always shows on a mobile-width screen, dismiss just hides it for the
-// current page view (no localStorage dependency that could silently
-// keep it suppressed from earlier testing).
-// ══════════════════════════════════════════════════════════════════
-document.addEventListener('DOMContentLoaded', () => {
-    const desktopTip      = document.getElementById('map-desktop-tip');
-    const desktopTipClose = document.getElementById('map-desktop-tip-close');
-    if (!desktopTip) return;
-
-    let dismissed = false;
-    const mq = window.matchMedia('(max-width: 1024px)');
-
-    function syncTip() {
-        if (dismissed) return;
-        desktopTip.classList.toggle('show', mq.matches);
-    }
-
-    syncTip();
-
-    // React live to viewport/orientation changes, not just the width at
-    // page load — otherwise resizing or rotating after load (or testing
-    // via DevTools device toolbar without a hard reload) leaves the tip
-    // stuck in whatever state it was in on first paint.
-    if (mq.addEventListener) {
-        mq.addEventListener('change', syncTip);
-    } else if (mq.addListener) {
-        mq.addListener(syncTip); // Safari <14 fallback
-    }
-
-    if (desktopTipClose) {
-        desktopTipClose.addEventListener('click', () => {
-            dismissed = true;
-            desktopTip.classList.remove('show');
-        });
-    }
-});
