@@ -273,7 +273,7 @@ document.addEventListener('DOMContentLoaded', () => {
         { group:'comfort', key:'water',                        label:'Water nearby',        icon:'ti-droplet',          color:'ind-blue',   weight:0.4,
           def:'Proximity to rivers, streams or fountains. Water features make streets more engaging and pleasant; children are naturally drawn to them.' },
         { group:'comfort', key:'buildings',                    label:'Buildings',           icon:'ti-building',         color:'ind-slate',  weight:0.1,
-          def:'Density of surrounding buildings. Lower density scores higher here — a more open, less enclosed streetscape is treated as more comfortable, while heavily built-up surroundings score lower.' },
+          def:'Density of surrounding buildings. Lower density scores higher here: a more open, less enclosed streetscape is treated as more comfortable, while heavily built-up surroundings score lower.' },
         { group:'comfort', key:'width',                        label:'Path width',          icon:'ti-arrows-horizontal',color:'ind-teal',   weight:0,
           def:'Width of the footpath or road. Wider paths give children more space to walk side by side, pass others safely, and feel less crowded.' },
         { group:'comfort', key:'parking',                      label:'On-street parking',   icon:'ti-parking',          color:'ind-coral',  weight:0,
@@ -296,7 +296,7 @@ document.addEventListener('DOMContentLoaded', () => {
         { group:'safety',  key:'bicycle_infrastructure_ft',    label:'Bike infrastructure', icon:'ti-bike',             color:'ind-blue',   weight:0.2,
           def:'Type of cycling facility: dedicated cycle path, shared lane, or none. A protected bike way is essential for children to cycle independently.' },
         { group:'safety',  key:'road_category',                label:'Road category',       icon:'ti-road',             color:'ind-pink',   weight:0.3,
-          def:'Road classification. Residential and calmed streets are safest for child cyclists — well separated from fast-moving traffic.' },
+          def:'Road classification. Residential and calmed streets are safest for child cyclists: well separated from fast-moving traffic.' },
         { group:'safety',  key:'lighting',                     label:'Street lighting',     icon:'ti-bulb',             color:'ind-amber',  weight:0.3,
           def:'Presence of street lighting. Lit routes give children and parents confidence to cycle in darker conditions.' },
         { group:'safety',  key:'designated_route_ft',          label:'Designated route',    icon:'ti-route-square',     color:'ind-blue',   weight:0.1,
@@ -308,23 +308,23 @@ document.addEventListener('DOMContentLoaded', () => {
         { group:'safety',  key:'number_lanes_ft',              label:'Number of lanes',     icon:'ti-layout-columns',   color:'ind-slate',  weight:0,
           def:'Number of traffic lanes. More lanes mean more traffic streams to cross and a more intimidating environment for child cyclists.' },
         { group:'comfort', key:'parking',                      label:'On-street parking',   icon:'ti-parking',          color:'ind-coral',  weight:0.1,
-          def:'Whether on-street parking is allowed. Parked cars block sightlines and open doors unexpectedly — a real hazard for child cyclists.' },
+          def:'Whether on-street parking is allowed. Parked cars block sightlines and open doors unexpectedly: a real hazard for child cyclists.' },
         { group:'comfort', key:'pavement',                     label:'Pavement surface',    icon:'ti-road-off',         color:'ind-amber',  weight:0.1,
-          def:'Surface type. Smooth surfaces matter for child cyclists — rough cobbles slow them and can cause falls.' },
+          def:'Surface type. Smooth surfaces matter for child cyclists: rough cobbles slow them and can cause falls.' },
         { group:'comfort', key:'gradient_ft',                  label:'Gradient',            icon:'ti-trending-up',      color:'ind-coral',  weight:0.1,
-          def:'Steepness of the road. Steep hills are hard to cycle up and dangerous to descend — flat routes are strongly preferred for children.' },
+          def:'Steepness of the road. Steep hills are hard to cycle up and dangerous to descend: flat routes are strongly preferred for children.' },
         { group:'comfort', key:'width',                        label:'Path width',          icon:'ti-arrows-horizontal',color:'ind-teal',   weight:0,
           def:'Width of the cycling infrastructure. Wider paths allow children to cycle side by side and overtake safely without veering into traffic.' },
         { group:'comfort', key:'buildings',                    label:'Buildings',           icon:'ti-building',         color:'ind-slate',  weight:0,
-          def:'Density of surrounding buildings. Built-up areas can create wind tunnels and blind corners — less dense environments are more comfortable for cycling.' },
+          def:'Density of surrounding buildings. Built-up areas can create wind tunnels and blind corners: less dense environments are more comfortable for cycling.' },
         { group:'comfort', key:'greenness',                    label:'Greenery',            icon:'ti-trees',            color:'ind-green',  weight:0,
           def:'Green surroundings alongside the route. Greenery makes cycling more pleasant and can provide shade on hot days.' },
         { group:'comfort', key:'water',                        label:'Water nearby',        icon:'ti-droplet',          color:'ind-blue',   weight:0,
-          def:'Proximity to water features. Interesting environments make cycling feel less like effort — children report water as a highlight of their routes.' },
+          def:'Proximity to water features. Interesting environments make cycling feel less like effort: children report water as a highlight of their routes.' },
         { group:'comfort', key:'noise',                        label:'Quietness',           icon:'ti-ear',              color:'ind-teal',   weight:0,
           def:'Ambient noise level. Quieter streets are less stressful and make it easier for child cyclists to hear approaching vehicles.' },
         { group:'joy',     key:'sights',                       label:'Sights & landmarks',  icon:'ti-eye',              color:'ind-purple', weight:0.4,
-          def:'Number of points of interest nearby. Interesting streets reduce boredom — the top finding from the SALIS workshops.' },
+          def:'Number of points of interest nearby. Interesting streets reduce boredom: the top finding from the SALIS workshops.' },
         { group:'joy',     key:'play_and_outdoor',             label:'Play & outdoor',      icon:'ti-mood-kid',         color:'ind-green',  weight:0,
           def:'Play areas and outdoor spaces along the route. For children, a bike ride is much more appealing if it passes interesting places to stop.' },
         { group:'joy',     key:'attractiveness',               label:'Attractiveness',      icon:'ti-sparkles',         color:'ind-purple', weight:0,
@@ -332,7 +332,7 @@ document.addEventListener('DOMContentLoaded', () => {
         { group:'joy',     key:'comfort_facilities',           label:'Rest facilities',     icon:'ti-armchair',         color:'ind-blue',   weight:0,
           def:'Benches, shelters and rest spots. Useful for longer cycling trips so children can take breaks and stay hydrated.' },
         { group:'joy',     key:'eating_facilities',            label:'Eating spots',        icon:'ti-tools-kitchen',    color:'ind-amber',  weight:0,
-          def:'Food shops and kiosks nearby. A bakery or kiosk on the route is a motivating landmark — children cited these as highlights in SALIS workshops.' },
+          def:'Food shops and kiosks nearby. A bakery or kiosk on the route is a motivating landmark: children cited these as highlights in SALIS workshops.' },
     ];
 
     function getIndicators() {
@@ -1169,10 +1169,14 @@ document.addEventListener('DOMContentLoaded', () => {
         let searchMarker  = null;
         let debounceTimer = null;
         let activeRequest = 0; // guards against out-of-order responses
+        let currentResults = []; // the place objects behind the currently rendered list
+        let activeIndex   = -1; // which suggestion is keyboard-highlighted, -1 = none
 
         function closeResults() {
             resultsEl.style.display = 'none';
             resultsEl.innerHTML = '';
+            currentResults = [];
+            activeIndex = -1;
         }
 
         function setLoading() {
@@ -1181,15 +1185,18 @@ document.addEventListener('DOMContentLoaded', () => {
         }
 
         function renderResults(list) {
+            currentResults = list;
+            activeIndex = -1;
             if (!list.length) {
                 resultsEl.innerHTML = '<div class="map-search-result-empty">No matches found</div>';
                 resultsEl.style.display = 'block';
                 return;
             }
             resultsEl.innerHTML = '';
-            list.forEach(place => {
+            list.forEach((place, i) => {
                 const item = document.createElement('div');
                 item.className = 'map-search-result-item';
+                item.dataset.index = i;
                 const parts = (place.display_name || '').split(',');
                 const main  = parts[0] || place.display_name || 'Unknown place';
                 const sub   = parts.slice(1, 4).join(',').trim();
@@ -1197,9 +1204,25 @@ document.addEventListener('DOMContentLoaded', () => {
                 item.querySelector('.map-search-result-main').textContent = main;
                 item.querySelector('.map-search-result-sub').textContent = sub;
                 item.addEventListener('click', () => selectResult(place));
+                // Hovering with the mouse also updates the keyboard-highlighted
+                // item, so the two selection methods stay in sync.
+                item.addEventListener('mouseenter', () => setActiveIndex(i));
                 resultsEl.appendChild(item);
             });
             resultsEl.style.display = 'block';
+        }
+
+        // Moves the keyboard highlight to `idx` (clamped to the valid range),
+        // updates the visual highlight, and scrolls it into view if the list
+        // is scrolled. Used by ArrowDown/ArrowUp and by mouse hover above.
+        function setActiveIndex(idx) {
+            if (!currentResults.length) return;
+            activeIndex = Math.max(0, Math.min(idx, currentResults.length - 1));
+            resultsEl.querySelectorAll('.map-search-result-item').forEach(el => {
+                el.classList.toggle('active', Number(el.dataset.index) === activeIndex);
+            });
+            const activeEl = resultsEl.querySelector('.map-search-result-item.active');
+            if (activeEl && activeEl.scrollIntoView) activeEl.scrollIntoView({ block: 'nearest' });
         }
 
         function selectResult(place) {
@@ -1237,7 +1260,14 @@ document.addEventListener('DOMContentLoaded', () => {
 
         async function runSearch(query) {
             const requestId = ++activeRequest;
-            setLoading();
+            // Only show the "Searching…" placeholder if nothing is already
+            // displayed. If a previous query's results are still visible,
+            // keep them on screen instead of blanking them out — otherwise
+            // every additional keystroke (a totally normal part of typing)
+            // wipes the list and replaces it with a loading message for
+            // however long the network round-trip takes, which reads as
+            // "the suggestions disappeared" even though nothing is wrong.
+            if (!resultsEl.innerHTML) setLoading();
             try {
                 // Softly bias results toward whichever city is currently in
                 // view (does not exclude results elsewhere — just ranks
@@ -1256,7 +1286,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 renderResults(Array.isArray(data) ? data : []);
             } catch (e) {
                 if (requestId !== activeRequest) return;
-                resultsEl.innerHTML = '<div class="map-search-result-empty">Search unavailable — check your connection</div>';
+                resultsEl.innerHTML = '<div class="map-search-result-empty">Search unavailable: check your connection</div>';
                 resultsEl.style.display = 'block';
             }
         }
@@ -1275,7 +1305,26 @@ document.addEventListener('DOMContentLoaded', () => {
         });
 
         input.addEventListener('keydown', (e) => {
-            if (e.key === 'Escape') { input.blur(); closeResults(); wrap.classList.remove('focused'); }
+            if (e.key === 'Escape') {
+                input.blur(); closeResults(); wrap.classList.remove('focused');
+                return;
+            }
+
+            const hasList = resultsEl.style.display === 'block' && currentResults.length;
+
+            if (e.key === 'ArrowDown') {
+                e.preventDefault(); // don't move the text cursor
+                if (!hasList) return;
+                setActiveIndex(activeIndex < 0 ? 0 : activeIndex + 1);
+            } else if (e.key === 'ArrowUp') {
+                e.preventDefault();
+                if (!hasList) return;
+                setActiveIndex(activeIndex < 0 ? currentResults.length - 1 : activeIndex - 1);
+            } else if (e.key === 'Enter') {
+                if (!hasList || activeIndex < 0) return; // let Enter behave normally if nothing is highlighted
+                e.preventDefault();
+                selectResult(currentResults[activeIndex]);
+            }
         });
 
         clearBtn.addEventListener('click', () => {
@@ -1939,7 +1988,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     async function doExport(format) {
         const isWalk   = currentMode === 'walkability';
-        const mapTitle = isWalk ? 'Child Walkability — Salzburg' : 'Child Bikeability — Salzburg';
+        const mapTitle = isWalk ? 'Child Walkability: Salzburg' : 'Child Bikeability: Salzburg';
         const tiers    = ['poor','average','moderate','good','excellent'];
 
         const mapCanvas = map.getCanvas();
@@ -2543,12 +2592,20 @@ document.addEventListener('DOMContentLoaded', () => {
             const y = e.changedTouches ? e.changedTouches[0].clientY : e.clientY;
             const movedDown = y - startY;
             if (Math.abs(movedDown) < 6) { sheet.classList.toggle('expanded'); return; }
-            if (movedDown < -sheetH / 4) sheet.classList.add('expanded');
-            else if (movedDown > sheetH / 4) sheet.classList.remove('expanded');
+
+            // A deliberate swipe in either direction should be enough to
+            // decide the sheet's state — it shouldn't need to travel a
+            // quarter (or, in the old fallback math, effectively half) of
+            // the sheet's full height before it "counts". 60px (or 15% of
+            // the sheet, whichever is smaller) matches how far people
+            // actually swipe, so modest drags are no longer ignored.
+            const DISMISS_PX = Math.min(60, sheetH * 0.15);
+            if (movedDown > DISMISS_PX) sheet.classList.remove('expanded');
+            else if (movedDown < -DISMISS_PX) sheet.classList.add('expanded');
             else {
-                const endPx = startPx + movedDown;
-                if (endPx < sheetH / 2) sheet.classList.add('expanded');
-                else sheet.classList.remove('expanded');
+                // Very small residual drag: fall back to final absolute position.
+                const endPx = Math.max(0, startPx + movedDown);
+                sheet.classList.toggle('expanded', endPx < sheetH / 2);
             }
         }
         handle.addEventListener('mousedown', onDown);
