@@ -393,7 +393,13 @@ document.addEventListener('DOMContentLoaded', () => {
         const buttons = [...rail.querySelectorAll('.mobile-nav-btn')];
         let openKey = null;
 
+        // Sections' original home, so a section we move OUT of the
+        // popover still lives somewhere in the document (and stays
+        // queryable next time) instead of being destroyed.
+        const sectionsHome = document.querySelector('.dashboard-bg .panel-content');
+
         function closePopover() {
+            if (sectionsHome) { while (body.firstChild) sectionsHome.appendChild(body.firstChild); }
             popover.classList.remove('show');
             buttons.forEach(b => b.classList.remove('active'));
             openKey = null;
@@ -403,9 +409,11 @@ document.addEventListener('DOMContentLoaded', () => {
             const cfg = SECTIONS[key];
             const section = document.querySelector(cfg.selector);
             if (!section) return;
-            // Move (not clone) the section into the shared popover body —
-            // it naturally moves itself out of whichever pane it was
-            // last in, so only one place ever holds it at a time.
+            // Send back whatever was previously open before bringing the
+            // new one in — this was the actual bug: sections were only
+            // ever appended, never removed, so every section anyone had
+            // opened stayed piled up in the popover together.
+            if (sectionsHome) { while (body.firstChild) sectionsHome.appendChild(body.firstChild); }
             body.appendChild(section);
             title.textContent = cfg.label;
             buttons.forEach(b => b.classList.toggle('active', b.dataset.target === key));
