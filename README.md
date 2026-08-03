@@ -3,9 +3,10 @@
 
 # Data Sources
 
-- Network indicators & scoring**: [urbanistamna/netascore_children](https://github.com/urbanistamna/netascore_children)
+- **Network indicators & scoring**: [urbanistamna/netascore_children](https://github.com/urbanistamna/netascore_children)
 - **Base network model**: [plus-mobilitylab/netascore](https://github.com/plus-mobilitylab/netascore)
 - **Land use / land cover & street tree layers**: Copernicus Urban Atlas Data & Open Street Map POIs.
+- **Base Map, Road Network**: Open Street Map
 
 ![Salzburg map preview](Docs/Images/salzburg-Maps-01.jpg)
 
