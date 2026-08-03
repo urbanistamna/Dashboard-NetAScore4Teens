@@ -18,7 +18,10 @@ document.addEventListener('DOMContentLoaded', () => {
     if (introCta && introOverlay) {
         introCta.addEventListener('click', () => {
             introOverlay.classList.add('hiding');
-            setTimeout(() => { introOverlay.style.display = 'none'; }, 560);
+            setTimeout(() => {
+                introOverlay.style.display = 'none';
+                document.dispatchEvent(new CustomEvent('introDismissed'));
+            }, 560);
         });
     }
 
@@ -365,6 +368,41 @@ document.addEventListener('DOMContentLoaded', () => {
         mobileLayoutState = nowMobile;
     });
 
+    // =========================================================
+    // "WORKS BETTER ON DESKTOP" TIP
+    // =========================================================
+    // The banner and its .show CSS both already existed, but nothing ever
+    // added the .show class or wired the close button — so it never
+    // actually appeared.
+    (function initDesktopTip() {
+        const tip      = document.getElementById('map-desktop-tip');
+        const closeBtn = document.getElementById('map-desktop-tip-close');
+        const introOverlay = document.getElementById('intro-overlay');
+        if (!tip) return;
+        let dismissed = false;
+        try { dismissed = sessionStorage.getItem('desktopTipDismissed') === '1'; } catch (e) {}
+
+        function reveal() {
+            if (isMobile() && !dismissed) tip.classList.add('show');
+        }
+        // If the intro overlay is already gone (or missing), show shortly
+        // after load; otherwise wait for the user to actually dismiss it
+        // first, so the tip doesn't fire while still hidden behind it.
+        const introVisible = introOverlay && introOverlay.style.display !== 'none';
+        if (introVisible) {
+            document.addEventListener('introDismissed', () => setTimeout(reveal, 400), { once: true });
+        } else {
+            setTimeout(reveal, 1400);
+        }
+
+        if (closeBtn) {
+            closeBtn.addEventListener('click', () => {
+                tip.classList.remove('show');
+                try { sessionStorage.setItem('desktopTipDismissed', '1'); } catch (e) {}
+            });
+        }
+    })();
+
     // ── CASE STUDY CITIES ─────────────────────────────────────
     // Each entry points at its own hosted .pmtiles tile source, generated
     // via the same NetAScore → tippecanoe pipeline (see README_tile_conversion.md),
@@ -437,13 +475,13 @@ document.addEventListener('DOMContentLoaded', () => {
           def:'Presence of on-street parking. Parked cars reduce visibility at crossings and can make footpaths feel narrower and less safe for children.' },
         { group:'comfort', key:'pavement',                     label:'Pavement surface',    icon:'ti-road-off',         color:'ind-amber',  weight:0,
           def:'Surface quality of the footpath. Smooth, well-maintained surfaces are safer and more comfortable; especially for younger children and those with pushchairs.' },
+        { group:'comfort', key:'comfort_facilities',           label:'Rest facilities',     icon:'ti-armchair',         color:'ind-blue',   weight:0.1,
+          def:'Comfort facilities like benches, shades, rest spots and shelters. Rest spots give children and caregivers places to pause on longer routes.' },
         // JOY
         { group:'joy',     key:'play_and_outdoor',             label:'Play & outdoor',      icon:'ti-mood-kid',         color:'ind-green',  weight:0.2,
           def:'Number of play areas and outdoor activity spaces nearby. Play spots transform a boring route into an adventure; key finding from workshops.' },
         { group:'joy',     key:'sights',                       label:'Sights & landmarks',  icon:'ti-eye',              color:'ind-purple', weight:0,
           def:'Points of interest and landmarks along the route. Interesting streets feel shorter and more enjoyable.' },
-        { group:'joy',     key:'comfort_facilities',           label:'Rest facilities',     icon:'ti-armchair',         color:'ind-blue',   weight:0.1,
-          def:'Comfort facilities like benches, shades, rest spots and shelters. Rest spots give children and caregivers places to pause on longer routes.' },
         { group:'joy',     key:'eating_facilities',            label:'Eating spots',        icon:'ti-tools-kitchen',    color:'ind-amber',  weight:0.1,
           def:'Cafes, kiosks, supermarkets and food shops nearby. In workshops with Teens, a supermarket (SPAR) was the most cited positive landmark on the school street.' },
         { group:'joy',     key:'attractiveness',               label:'Attractiveness',      icon:'ti-sparkles',         color:'ind-purple', weight:0,
@@ -484,6 +522,8 @@ document.addEventListener('DOMContentLoaded', () => {
           def:'Proximity to water features. Interesting environments make cycling feel less like effort — children report water as a highlight of their routes.' },
         { group:'comfort', key:'noise',                        label:'Quietness',           icon:'ti-ear',              color:'ind-teal',   weight:0,
           def:'Ambient noise level. Quieter streets are less stressful and make it easier for child cyclists to hear approaching vehicles.' },
+        { group:'comfort', key:'comfort_facilities',           label:'Rest facilities',     icon:'ti-armchair',         color:'ind-blue',   weight:0,
+          def:'Benches, shelters and rest spots. Useful for longer cycling trips so children can take breaks and stay hydrated.' },
         // JOY
         { group:'joy',     key:'sights',                       label:'Sights & landmarks',  icon:'ti-eye',              color:'ind-purple', weight:0.4,
           def:'Number of points of interest nearby. Interesting streets reduce boredom — the top finding from the SALIS workshops.' },
@@ -491,8 +531,6 @@ document.addEventListener('DOMContentLoaded', () => {
           def:'Play areas and outdoor spaces along the route. For children, a bike ride is much more appealing if it passes interesting places to stop.' },
         { group:'joy',     key:'attractiveness',               label:'Attractiveness',      icon:'ti-sparkles',         color:'ind-purple', weight:0,
           def:'Overall visual attractiveness of the street. Beautiful, varied environments make cycling feel like an exploration rather than a chore.' },
-        { group:'joy',     key:'comfort_facilities',           label:'Rest facilities',     icon:'ti-armchair',         color:'ind-blue',   weight:0,
-          def:'Benches, shelters and rest spots. Useful for longer cycling trips so children can take breaks and stay hydrated.' },
         { group:'joy',     key:'eating_facilities',            label:'Eating spots',        icon:'ti-tools-kitchen',    color:'ind-amber',  weight:0,
           def:'Food shops and kiosks nearby. A bakery or kiosk on the route is a motivating landmark — children cited these as highlights in SALIS workshops.' },
     ];
@@ -1588,9 +1626,21 @@ document.addEventListener('DOMContentLoaded', () => {
             applyThreshold();
         }
 
+        // A single-pixel query almost never lands exactly on a thin road
+        // line from a fingertip tap (no cursor precision like a mouse has),
+        // which is why roads effectively never got selected on touch. Query
+        // a small box around the point instead — bigger for touch taps.
+        function queryRoadFeatures(point, generous) {
+            const pad = generous ? 12 : 3;
+            return map.queryRenderedFeatures(
+                [[point.x - pad, point.y - pad], [point.x + pad, point.y + pad]],
+                { layers: ['walkability-layer', 'bikeability-layer'] }
+            );
+        }
+
         // HOVER — always update panel and tooltip
         map.on('mousemove', e => {
-            const feats = map.queryRenderedFeatures(e.point, { layers:['walkability-layer','bikeability-layer'] });
+            const feats = queryRoadFeatures(e.point, false);
             if (!feats.length) {
                 clearTimeout(hoverTimer); tooltip.style.display = 'none'; map.getCanvas().style.cursor = '';
                 hoverTimer = setTimeout(() => {
@@ -1624,7 +1674,7 @@ document.addEventListener('DOMContentLoaded', () => {
             // Ignore clicks on POI markers or MapLibre popup elements
             const t = e.originalEvent.target;
             if (t.closest('.poi-map-marker') || t.closest('.maplibregl-popup') || t.closest('.mapboxgl-popup')) return;
-            const feats = map.queryRenderedFeatures(e.point, { layers:['walkability-layer','bikeability-layer'] });
+            const feats = queryRoadFeatures(e.point, isMobile());
             if (!feats.length) { setPinned(null); setHighlight(null); showEmpty(); return; }
             const props = feats[0].properties; const osmId = String(props.osm_id);
             if (pinnedId === osmId) {
