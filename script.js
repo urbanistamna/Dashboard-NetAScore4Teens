@@ -237,20 +237,27 @@ document.addEventListener('DOMContentLoaded', () => {
     try {
 
     // =========================================================
-    // MOBILE BOTTOM SHEET
+    // MOBILE LAYOUT: bottom sheet (road detail) + left icon rail (controls)
     // =========================================================
-    // The HTML/CSS for the mobile bottom sheet already existed (handle,
-    // tab bar, .expanded / .dragging classes) but had NO JavaScript behind
-    // it at all: nothing ever moved the panel content into it, nothing
-    // switched tabs, and nothing listened for touch drags — so on a phone
-    // it just sat there permanently collapsed and empty ("jammed").
+    // The bottom sheet's HTML/CSS already existed (handle, .expanded /
+    // .dragging classes) but had NO JavaScript behind it at all — nothing
+    // ever moved content into it or listened for touch drags. Controls
+    // (city/mode/filter/POI/env) now live behind a narrow left icon rail
+    // instead of a second sheet tab, so the map and sheet can stay wider.
     const MOBILE_BREAKPOINT = 1024; // matches the CSS @media (max-width:1024px) block
     function isMobile() {
         return window.matchMedia(`(max-width: ${MOBILE_BREAKPOINT}px)`).matches;
     }
 
+    // Keeps the rail/popover's top offset in sync with the header's real
+    // height (it can vary once the description is relocated into it),
+    // instead of hardcoding a guessed pixel value in CSS.
+    function syncMobileHeaderHeight() {
+        const header = document.querySelector('.header-window');
+        if (header) document.documentElement.style.setProperty('--mobile-header-h', header.offsetHeight + 'px');
+    }
+
     let mobileSheetReady   = false;
-    let setMobileTabActive = null; // assigned once the sheet is initialized
     let expandMobileSheet  = null;
     let collapseMobileSheet = null;
 
@@ -258,49 +265,40 @@ document.addEventListener('DOMContentLoaded', () => {
         if (mobileSheetReady) return;
         const sheet   = document.getElementById('mobile-sheet');
         const handle  = document.getElementById('mobile-sheet-handle');
-        const tabbar  = document.getElementById('mobile-tabbar');
         const roadPane     = document.getElementById('mobile-pane-road');
-        const controlsPane = document.getElementById('mobile-pane-controls');
-        const panelContent = document.querySelector('.dashboard-bg .panel-content');
         const detailPanel  = document.getElementById('detail-panel');
-        if (!sheet || !handle || !tabbar || !roadPane || !controlsPane) return;
+        const lpIntro      = document.querySelector('.lp-intro');
+        const headerWindow = document.querySelector('.header-window');
+        if (!sheet || !handle || !roadPane) return;
         mobileSheetReady = true;
 
-        // ── 1) Physically relocate the real desktop panel content into the
-        // sheet's panes (moved, not cloned, so all the existing IDs that
-        // showDetail()/showEmpty()/the controls all read from keep working
-        // completely unchanged no matter which parent they live under). ──
-        if (panelContent && controlsPane.childElementCount === 0) {
-            controlsPane.appendChild(panelContent);
-        }
+        // ── 1) Physically relocate real desktop content (moved, not
+        // cloned, so all the existing IDs that showDetail()/showEmpty()/
+        // the controls read from keep working unchanged regardless of
+        // which parent they live under). ──
         if (detailPanel && roadPane.childElementCount === 0) {
             while (detailPanel.firstChild) roadPane.appendChild(detailPanel.firstChild);
         }
-
-        // ── 2) Tab switching ──
-        const tabs  = [...tabbar.querySelectorAll('.mobile-tab')];
-        const panes = { controls: controlsPane, road: roadPane };
-        function setTab(name) {
-            tabs.forEach(t => t.classList.toggle('active', t.dataset.tab === name));
-            Object.entries(panes).forEach(([key, el]) => el.classList.toggle('active', key === name));
+        // "A Teen's Perspective" heading + quote go underneath the logo,
+        // as their own row below the header's logo/title row (the dark
+        // toggle that used to live inside this block moves to the rail
+        // instead — see initMobileNavRail).
+        if (lpIntro && headerWindow && lpIntro.parentElement !== headerWindow) {
+            lpIntro.id = 'header-mobile-desc';
+            headerWindow.appendChild(lpIntro);
         }
-        setMobileTabActive = setTab;
-        tabs.forEach(tab => {
-            tab.addEventListener('click', () => {
-                setTab(tab.dataset.tab);
-                expand();
-            });
-        });
+        syncMobileHeaderHeight();
+        window.addEventListener('resize', syncMobileHeaderHeight);
 
-        // ── 3) Expand / collapse ──
+        // ── 2) Expand / collapse ──
         function expand()   { sheet.classList.add('expanded'); }
         function collapse() { sheet.classList.remove('expanded'); }
         expandMobileSheet   = expand;
         collapseMobileSheet = collapse;
 
-        // ── 4) Drag-to-resize from the handle (touch + mouse, so it also
+        // ── 3) Drag-to-resize from the handle (touch + mouse, so it also
         // works with mouse-emulated touch in devtools while testing) ──
-        const COLLAPSED_VISIBLE = 108; // must match CSS: translateY(calc(100% - 108px))
+        const COLLAPSED_VISIBLE = 40; // must match CSS: translateY(calc(100% - 40px))
         let dragStartY      = 0;
         let dragStartOffset = 0;
         let dragMoved       = false;
@@ -358,13 +356,80 @@ document.addEventListener('DOMContentLoaded', () => {
         handle.addEventListener('mousedown',  dragStart);
     }
 
+    // Left icon rail — the mobile replacement for the old "Controls" tab.
+    // Each button relocates (not clones) one .panel-section from the
+    // desktop panel into a shared popover, so all the section's existing
+    // wiring (chip clicks, slider, etc.) keeps working unchanged.
+    let mobileNavReady = false;
+    function initMobileNavRail() {
+        if (mobileNavReady) return;
+        const rail    = document.getElementById('mobile-nav-rail');
+        const popover = document.getElementById('mobile-nav-popover');
+        const title   = document.getElementById('mobile-nav-popover-title');
+        const body    = document.getElementById('mobile-nav-popover-body');
+        const closeBtn = document.getElementById('mobile-nav-popover-close');
+        if (!rail || !popover || !title || !body) return;
+        mobileNavReady = true;
+
+        // The dark-mode toggle moves in here too, above City — it's a
+        // persistent control like the others, not tied to any one
+        // popover section. Its click handler (in the DARK MODE TOGGLE
+        // block near the top of this file) is bound to its #id, so it
+        // keeps working unchanged regardless of which parent it's in.
+        const darkToggle = document.getElementById('dark-toggle');
+        if (darkToggle && darkToggle.parentElement !== rail) {
+            darkToggle.classList.add('mobile-nav-btn');
+            darkToggle.removeAttribute('title');
+            rail.insertBefore(darkToggle, rail.firstChild);
+        }
+
+        const SECTIONS = {
+            city:    { label: 'City',        selector: '.sec-city' },
+            explore: { label: 'Mode',         selector: '.sec-explore' },
+            filter:  { label: 'Filter by score', selector: '.sec-filter' },
+            poi:     { label: 'Points of Interest', selector: '.sec-poi' },
+            env:     { label: 'Environmental Layers', selector: '.sec-env' },
+        };
+        const buttons = [...rail.querySelectorAll('.mobile-nav-btn')];
+        let openKey = null;
+
+        function closePopover() {
+            popover.classList.remove('show');
+            buttons.forEach(b => b.classList.remove('active'));
+            openKey = null;
+        }
+
+        function openSection(key) {
+            const cfg = SECTIONS[key];
+            const section = document.querySelector(cfg.selector);
+            if (!section) return;
+            // Move (not clone) the section into the shared popover body —
+            // it naturally moves itself out of whichever pane it was
+            // last in, so only one place ever holds it at a time.
+            body.appendChild(section);
+            title.textContent = cfg.label;
+            buttons.forEach(b => b.classList.toggle('active', b.dataset.target === key));
+            popover.classList.add('show');
+            openKey = key;
+        }
+
+        buttons.forEach(btn => {
+            btn.addEventListener('click', () => {
+                const key = btn.dataset.target;
+                if (openKey === key) { closePopover(); return; }
+                openSection(key);
+            });
+        });
+        if (closeBtn) closeBtn.addEventListener('click', closePopover);
+    }
+
     // Move content in only when we're actually on a mobile layout — the
     // desktop panels must keep their content when the sheet isn't in use.
-    if (isMobile()) initMobileSheet();
+    if (isMobile()) { initMobileSheet(); initMobileNavRail(); }
     let mobileLayoutState = isMobile();
     window.addEventListener('resize', () => {
         const nowMobile = isMobile();
-        if (nowMobile && !mobileLayoutState) initMobileSheet();
+        if (nowMobile && !mobileLayoutState) { initMobileSheet(); initMobileNavRail(); }
         mobileLayoutState = nowMobile;
     });
 
@@ -1682,6 +1747,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 setPinned(null);
                 setHighlight(null);
                 showEmpty();
+                if (isMobile() && collapseMobileSheet) collapseMobileSheet();
             } else {
                 setPinned(props);
                 setHighlight(osmId);
@@ -1692,12 +1758,10 @@ document.addEventListener('DOMContentLoaded', () => {
                 // Snap slider to the score tier of the clicked road
                 const scoreVal = props[currentMode === 'walkability' ? 'index_walk_ft' : 'index_bike_ft'];
                 if (scoreVal !== null && scoreVal !== undefined) snapSliderToScore(scoreVal);
-                // On mobile, jump to the "Pick a Road" tab and pop the sheet
-                // open so the tap has an immediately visible result.
-                if (isMobile()) {
-                    if (setMobileTabActive) setMobileTabActive('road');
-                    if (expandMobileSheet) expandMobileSheet();
-                }
+                // Pop the sheet open to 40% of the screen for every newly
+                // selected road, per request — the rail stays clear since
+                // the sheet only spans from its left edge rightward.
+                if (isMobile() && expandMobileSheet) expandMobileSheet();
             }
             document.getElementById('map-hint').classList.add('hidden');
         });
@@ -2790,6 +2854,7 @@ function initEnvLayers() {
             const opRow  = document.getElementById('env-opacity-row');
             const lcuLegend = document.getElementById('lcu-panel-legend');
             const stlLegend = document.getElementById('stl-panel-legend');
+            const clearEnv  = document.getElementById('clear-env');
 
             if (active) {
                 chip.dataset.active = 'false';
@@ -2797,11 +2862,13 @@ function initEnvLayers() {
                 removeEnvLayer(key);
                 const anyActive = [...document.querySelectorAll('.env-chip')].some(c => c.dataset.active === 'true');
                 if (opRow) opRow.style.display = anyActive ? 'flex' : 'none';
+                if (clearEnv) clearEnv.style.display = anyActive ? 'block' : 'none';
             } else {
                 chip.dataset.active = 'true';
                 chip.classList.add('active');
                 addEnvLayer(key);
                 if (opRow) opRow.style.display = 'flex';
+                if (clearEnv) clearEnv.style.display = 'block';
             }
 
             if (key === 'lcu' && lcuLegend) {
@@ -2812,6 +2879,26 @@ function initEnvLayers() {
             }
         });
     });
+
+    function clearAllEnvLayers() {
+        document.querySelectorAll('.env-chip').forEach(chip => {
+            if (chip.dataset.active === 'true') removeEnvLayer(chip.dataset.env);
+            chip.dataset.active = 'false';
+            chip.classList.remove('active');
+        });
+        const lcuLegend = document.getElementById('lcu-panel-legend');
+        const stlLegend = document.getElementById('stl-panel-legend');
+        const opRow      = document.getElementById('env-opacity-row');
+        const opRowStl   = document.getElementById('env-opacity-row-stl');
+        const clearEnv   = document.getElementById('clear-env');
+        if (lcuLegend) lcuLegend.style.display = 'none';
+        if (stlLegend) stlLegend.style.display = 'none';
+        if (opRow) opRow.style.display = 'none';
+        if (opRowStl) opRowStl.style.display = 'none';
+        if (clearEnv) clearEnv.style.display = 'none';
+    }
+    const clearEnvBtn = document.getElementById('clear-env-btn');
+    if (clearEnvBtn) clearEnvBtn.addEventListener('click', clearAllEnvLayers);
 
     // Hover tooltip for Land Use / Street Trees — only when a road isn't already
     // being hovered (road details take priority in the main tooltip/panel).

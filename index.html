@@ -840,6 +840,11 @@
                     <input type="range" class="env-opacity-slider" id="env-opacity-slider-stl" min="10" max="100" value="75">
                     <span class="env-opacity-value" id="env-opacity-value-stl">75%</span>
                 </div>
+                <div id="clear-env" style="display:none; margin-top:8px;">
+                    <span class="clear-filter-btn" id="clear-env-btn">
+                        <i class="ti ti-x"></i> Clear all
+                    </span>
+                </div>
             </div>
 
         </div>
@@ -895,7 +900,7 @@
         </div>
 
         <div class="map-plain-attrib">
-            © <a href="https://openfreemap.org/" target="_blank">OpenFreeMap</a> ·
+            © <a href="https://maplibre.org/" target="_blank">MapLibre</a> ·
             © <a href="https://www.openstreetmap.org/copyright" target="_blank">OpenStreetMap</a>
         </div>
 
@@ -920,8 +925,11 @@
 
             <!-- Export button -->
             <button class="map-export-btn" id="map-export-btn" title="Export map">
-                <i class="ti ti-printer"></i>
-                <span>Export Map</span>
+                <span class="meb-left">
+                    <i class="ti ti-printer"></i>
+                    <span>Export Map</span>
+                </span>
+                <i class="ti ti-chevron-up"></i>
             </button>
 
         </div>
@@ -1078,24 +1086,34 @@
         </div>
     </div>
 
-    <!-- MOBILE ONLY: single bottom sheet with a bottom app bar to switch
-         between "Controls" (city-level controls, relocated here from
-         .dashboard-bg .panel-content) and "Pick a Road" (road detail,
-         relocated here from #detail-panel above). Content is MOVED by JS
-         (isMobile() only), not duplicated — desktop DOM/CSS stays
-         completely untouched. -->
+    <!-- MOBILE ONLY: narrow left icon rail replaces the old full-width
+         "Controls" tab. Tapping an icon opens the matching section
+         (moved here by JS from .dashboard-bg .panel-content, same
+         relocate-don't-duplicate approach as the bottom sheet) in the
+         popover beside it. Map + bottom sheet get pushed right by the
+         rail's width so nothing sits underneath it. -->
+    <div class="mobile-nav-rail" id="mobile-nav-rail">
+        <button class="mobile-nav-btn" data-target="city" type="button" aria-label="City"><i class="ti ti-map-pin"></i></button>
+        <button class="mobile-nav-btn" data-target="explore" type="button" aria-label="Mode"><i class="ti ti-compass"></i></button>
+        <button class="mobile-nav-btn" data-target="filter" type="button" aria-label="Filter by score"><i class="ti ti-adjustments-horizontal"></i></button>
+        <button class="mobile-nav-btn" data-target="poi" type="button" aria-label="Points of interest"><i class="ti ti-map-pins"></i></button>
+        <button class="mobile-nav-btn" data-target="env" type="button" aria-label="Environmental layers"><i class="ti ti-leaf"></i></button>
+    </div>
+    <div class="mobile-nav-popover" id="mobile-nav-popover">
+        <div class="mobile-nav-popover-header">
+            <span id="mobile-nav-popover-title"></span>
+            <button id="mobile-nav-popover-close" type="button" aria-label="Close"><i class="ti ti-x"></i></button>
+        </div>
+        <div class="mobile-nav-popover-body" id="mobile-nav-popover-body"></div>
+    </div>
+
+    <!-- MOBILE ONLY: bottom sheet now holds only road detail (relocated
+         from #detail-panel above) — Controls moved to the rail above
+         instead. Content is MOVED by JS (isMobile() only), not
+         duplicated — desktop DOM/CSS stays completely untouched. -->
     <div class="mobile-sheet" id="mobile-sheet">
         <div class="mobile-sheet-handle" id="mobile-sheet-handle"></div>
-        <div class="mobile-tabbar" id="mobile-tabbar">
-            <button class="mobile-tab" data-tab="controls" type="button">
-                <i class="ti ti-layers-intersect"></i><span>Controls</span>
-            </button>
-            <button class="mobile-tab active" data-tab="road" type="button">
-                <i class="ti ti-map-pin"></i><span>Pick a Road</span>
-            </button>
-        </div>
         <div class="mobile-sheet-body">
-            <div class="mobile-pane" id="mobile-pane-controls"></div>
             <div class="mobile-pane active" id="mobile-pane-road"></div>
         </div>
     </div>
@@ -1129,12 +1147,12 @@
             <a href="https://mobilitylab.zgis.at/en/home-2/"             target="_blank" class="footer-logo-link"><img src="images/Mobility Lab.png"                alt="Mobility Lab"></a>
             <a href="https://www.plus.ac.at/"                             target="_blank" class="footer-logo-link"><img src="images/PLUS Logo englisch Farbe.jpg"    alt="PLUS" class="logo-big"></a>
             <a href="https://www.upol.cz"                                 target="_blank" class="footer-logo-link"><img src="images/UP_logo_horizont_en (1).png"     alt="Palacký" class="logo-big"></a>
-            <a href="https://www.linkedin.com/company/i-mobyl"            target="_blank" class="footer-logo-link"><img src="images/Main logo.png"                   alt="i-MOBYL" class="logo-imobyl"></a>
+            <a href="https://www.i-mobyl.eu/"                              target="_blank" class="footer-logo-link"><img src="images/Main logo.png"                   alt="i-MOBYL" class="logo-imobyl"></a>
         </div>
 
     </div>
 
 </div><!-- end #map-container -->
-<script src="./script.js?v=46"></script>
+<script src="./script.js?v=53"></script>
 </body>
 </html>
