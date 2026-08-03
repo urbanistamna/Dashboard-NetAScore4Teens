@@ -1699,16 +1699,58 @@ document.addEventListener('DOMContentLoaded', () => {
             applyThreshold();
         }
 
+        // Straight-line distance from a screen point to a segment, in
+        // screen pixels — used to find which candidate road a tap was
+        // actually closest to.
+        function distPointToSegment(px, py, x1, y1, x2, y2) {
+            const dx = x2 - x1, dy = y2 - y1;
+            const lenSq = dx * dx + dy * dy;
+            let t = lenSq === 0 ? 0 : ((px - x1) * dx + (py - y1) * dy) / lenSq;
+            t = Math.max(0, Math.min(1, t));
+            return Math.hypot(px - (x1 + t * dx), py - (y1 + t * dy));
+        }
+
+        // Closest distance (screen px) from a point to a feature's line
+        // geometry — projects each vertex to screen space and checks every
+        // segment. Cheap enough for the handful of features a small query
+        // box returns.
+        function distToFeature(point, feature) {
+            const geom = feature.geometry;
+            const lines = geom.type === 'LineString' ? [geom.coordinates]
+                        : geom.type === 'MultiLineString' ? geom.coordinates
+                        : [];
+            let min = Infinity;
+            lines.forEach(line => {
+                for (let i = 0; i < line.length - 1; i++) {
+                    const p1 = map.project(line[i]);
+                    const p2 = map.project(line[i + 1]);
+                    const d = distPointToSegment(point.x, point.y, p1.x, p1.y, p2.x, p2.y);
+                    if (d < min) min = d;
+                }
+            });
+            return min;
+        }
+
         // A single-pixel query almost never lands exactly on a thin road
-        // line from a fingertip tap (no cursor precision like a mouse has),
-        // which is why roads effectively never got selected on touch. Query
-        // a small box around the point instead — bigger for touch taps.
+        // line from a fingertip tap (no cursor precision like a mouse has).
+        // Query a generous box around the point instead — but a bigger box
+        // can catch several nearby roads at once, especially zoomed out in
+        // a dense street network, so always resolve to whichever candidate
+        // is geometrically closest to the actual tap point rather than
+        // just taking whatever the renderer returned first.
         function queryRoadFeatures(point, generous) {
-            const pad = generous ? 12 : 3;
-            return map.queryRenderedFeatures(
+            const pad = generous ? 18 : 3;
+            const feats = map.queryRenderedFeatures(
                 [[point.x - pad, point.y - pad], [point.x + pad, point.y + pad]],
                 { layers: ['walkability-layer', 'bikeability-layer'] }
             );
+            if (feats.length <= 1) return feats;
+            let best = feats[0], bestDist = Infinity;
+            feats.forEach(f => {
+                const d = distToFeature(point, f);
+                if (d < bestDist) { bestDist = d; best = f; }
+            });
+            return [best];
         }
 
         // HOVER — always update panel and tooltip
@@ -1977,9 +2019,10 @@ document.addEventListener('DOMContentLoaded', () => {
         // Base size is tuned for POI_BASE_ZOOM; zoom deltas scale it with a
         // gentle exponential curve, clamped so icons stay legible at very
         // low zooms and don't get comically huge at very high ones.
-        const POI_BASE_ZOOM  = 14;
-        const POI_BASE_SIZE  = 10;  // px diameter at POI_BASE_ZOOM
-        const POI_BASE_ICON  = 6;   // px icon font-size at POI_BASE_ZOOM
+        const POI_BASE_ZOOM   = 14;
+        const POI_BASE_SIZE   = 10;  // px diameter at POI_BASE_ZOOM
+        const POI_BASE_ICON   = 6;   // px icon font-size at POI_BASE_ZOOM
+        const POI_TOUCH_TARGET = 34; // px — fixed, generous tap area regardless of zoom/visual size
 
         function poiSizeForZoom(zoom) {
             const scale = Math.min(2.4, Math.max(0.55, Math.pow(1.18, zoom - POI_BASE_ZOOM)));
@@ -1989,15 +2032,17 @@ document.addEventListener('DOMContentLoaded', () => {
             };
         }
 
-        // Resize every currently-visible POI marker to match the new zoom.
-        // Only touches width/height/font-size — never `transform`, since
-        // maplibregl.Marker owns that property on this element for positioning.
+        // Resize every currently-visible POI marker's dot to match the new
+        // zoom. Only touches width/height/font-size on the inner .poi-map-
+        // marker-dot — never the outer .poi-map-marker wrapper (a fixed-size
+        // touch target, see below) and never `transform` on either, since
+        // maplibregl.Marker owns that property on the wrapper for positioning.
         function updatePOIMarkerSizes() {
             const { size, iconSize } = poiSizeForZoom(map.getZoom());
-            document.querySelectorAll('.poi-map-marker').forEach(el => {
-                el.style.width    = size + 'px';
-                el.style.height   = size + 'px';
-                el.style.fontSize = iconSize + 'px';
+            document.querySelectorAll('.poi-map-marker-dot').forEach(dot => {
+                dot.style.width    = size + 'px';
+                dot.style.height   = size + 'px';
+                dot.style.fontSize = iconSize + 'px';
             });
         }
         map.on('zoom', updatePOIMarkerSizes);
@@ -2039,14 +2084,29 @@ document.addEventListener('DOMContentLoaded', () => {
 
                     const name = (feat.properties && feat.properties.name) || cfg.label;
 
-                    // Solid filled circle marker with Tabler icon. Sized from
-                    // the current zoom so markers grow as you zoom in instead
-                    // of staying a fixed pixel size (see poiSizeForZoom).
+                    // Two layers: an invisible, fixed-size touch target
+                    // (comfortable to tap on a phone even when zoomed out)
+                    // containing a smaller visual dot that scales with zoom
+                    // (see poiSizeForZoom). Previously the visual dot WAS
+                    // the tap target — at low zoom it shrank to ~5-6px,
+                    // which a finger can barely land on reliably; that's
+                    // why POI taps often did nothing on mobile.
                     const { size, iconSize } = poiSizeForZoom(map.getZoom());
                     const el = document.createElement('div');
                     el.className = 'poi-map-marker';
-                    el.innerHTML = `<i class="ti ${iconCfg.icon}"></i>`;
                     el.style.cssText = `
+                        width: ${POI_TOUCH_TARGET}px;
+                        height: ${POI_TOUCH_TARGET}px;
+                        display: flex;
+                        align-items: center;
+                        justify-content: center;
+                        cursor: pointer;
+                        pointer-events: all;
+                    `;
+                    const dot = document.createElement('div');
+                    dot.className = 'poi-map-marker-dot';
+                    dot.innerHTML = `<i class="ti ${iconCfg.icon}"></i>`;
+                    dot.style.cssText = `
                         width: ${size}px;
                         height: ${size}px;
                         border-radius: 50%;
@@ -2057,18 +2117,18 @@ document.addEventListener('DOMContentLoaded', () => {
                         justify-content: center;
                         font-size: ${iconSize}px;
                         color: ${iconCfg.color};
-                        cursor: pointer;
                         box-shadow: 0 1px 2px rgba(0,0,0,0.2);
                         flex-shrink: 0;
-                        pointer-events: all;
+                        pointer-events: none;
                     `;
+                    el.appendChild(dot);
                     el.addEventListener('mouseenter', () => {
-                        el.style.boxShadow = '0 2px 6px rgba(0,0,0,0.3)';
-                        el.style.borderWidth = '1.5px';
+                        dot.style.boxShadow = '0 2px 6px rgba(0,0,0,0.3)';
+                        dot.style.borderWidth = '1.5px';
                     });
                     el.addEventListener('mouseleave', () => {
-                        el.style.boxShadow = '0 1px 2px rgba(0,0,0,0.2)';
-                        el.style.borderWidth = '1px';
+                        dot.style.boxShadow = '0 1px 2px rgba(0,0,0,0.2)';
+                        dot.style.borderWidth = '1px';
                     });
 
                     el.addEventListener('click', e => {

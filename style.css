@@ -2824,8 +2824,10 @@ body.dark-mode .map-desktop-tip.show button { background: rgba(147,197,253,0.15)
 /* POI markers (schools/sports/parks/bus stops) — base look is set inline in
    JS (color varies per POI type), but size is animated here so zoom-driven
    resizing (see updatePOIMarkerSizes in script.js) feels smooth instead of
-   snapping between sizes. */
-.poi-map-marker {
+   snapping between sizes. The outer .poi-map-marker is a fixed-size
+   invisible touch target (doesn't resize); .poi-map-marker-dot is the
+   visible circle that actually scales with zoom. */
+.poi-map-marker-dot {
     transition: width 0.15s ease, height 0.15s ease, font-size 0.15s ease;
 }
 
