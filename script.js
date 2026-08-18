@@ -216,6 +216,43 @@ document.addEventListener('DOMContentLoaded', () => {
     if (btn) btn.addEventListener('click', () => applyDark(!dark));
 });
 
+// ── ABOUT PILL — toggles Controls / About content in the left panel ──
+document.addEventListener('DOMContentLoaded', () => {
+    const toggleBtn  = document.getElementById('about-toggle');
+    const toggleIcon = document.getElementById('about-toggle-icon');
+    const panels = {
+        controls: document.getElementById('lp-panel-controls'),
+        about:    document.getElementById('lp-panel-about'),
+    };
+    if (!toggleBtn || !panels.controls || !panels.about) return;
+
+    let showingAbout = false;
+    function render() {
+        panels.controls.classList.toggle('active', !showingAbout);
+        panels.about.classList.toggle('active', showingAbout);
+        toggleBtn.classList.toggle('active', showingAbout);
+        toggleBtn.setAttribute('aria-expanded', showingAbout ? 'true' : 'false');
+        toggleBtn.title = showingAbout ? 'Back to controls' : 'About NetAScore4Teens';
+        if (toggleIcon) toggleIcon.className = showingAbout ? 'ti ti-x' : 'ti ti-info-circle';
+    }
+    toggleBtn.addEventListener('click', () => {
+        showingAbout = !showingAbout;
+        render();
+    });
+});
+
+// ── ABOUT PANEL — expandable rows ───────────────────────────────
+document.addEventListener('DOMContentLoaded', () => {
+    document.querySelectorAll('.about-row-toggle').forEach(toggle => {
+        toggle.addEventListener('click', () => {
+            const row = toggle.closest('.about-row');
+            if (!row) return;
+            const open = row.classList.toggle('open');
+            toggle.setAttribute('aria-expanded', open ? 'true' : 'false');
+        });
+    });
+});
+
 function showMapLoadError() {
     const overlay  = document.getElementById('map-loading-overlay');
     const spinner  = document.getElementById('map-loading-spinner');
@@ -384,6 +421,7 @@ document.addEventListener('DOMContentLoaded', () => {
         }
 
         const SECTIONS = {
+            about:   { label: 'About',        selector: '.sec-about' },
             city:    { label: 'City',        selector: '.sec-city' },
             explore: { label: 'Mode',         selector: '.sec-explore' },
             filter:  { label: 'Filter by score', selector: '.sec-filter' },
@@ -393,13 +431,31 @@ document.addEventListener('DOMContentLoaded', () => {
         const buttons = [...rail.querySelectorAll('.mobile-nav-btn')];
         let openKey = null;
 
-        // Sections' original home, so a section we move OUT of the
-        // popover still lives somewhere in the document (and stays
-        // queryable next time) instead of being destroyed.
-        const sectionsHome = document.querySelector('.dashboard-bg .panel-content');
+        // Each section's true original parent + next sibling, captured once
+        // up front — not a single shared "panel-content" home. Some sections
+        // (the Controls-tab ones) live nested inside #lp-panel-controls on
+        // desktop; returning them to a blanket shared parent would flatten
+        // them out of that wrapper and break the desktop Controls/About tab
+        // switcher if the window is later resized back up past the mobile
+        // breakpoint. Returning each section to its own recorded parent/
+        // position keeps desktop structure intact no matter what mobile did.
+        const originalHome = new Map();
+        Object.keys(SECTIONS).forEach(key => {
+            const el = document.querySelector(SECTIONS[key].selector);
+            if (el) originalHome.set(key, { parent: el.parentNode, next: el.nextSibling });
+        });
+
+        function returnSection(key) {
+            const home = originalHome.get(key);
+            if (!home) return;
+            const section = document.querySelector(SECTIONS[key].selector);
+            if (!section) return;
+            if (home.next && home.next.parentNode === home.parent) home.parent.insertBefore(section, home.next);
+            else home.parent.appendChild(section);
+        }
 
         function closePopover() {
-            if (sectionsHome) { while (body.firstChild) sectionsHome.appendChild(body.firstChild); }
+            if (openKey) returnSection(openKey);
             popover.classList.remove('show');
             buttons.forEach(b => b.classList.remove('active'));
             openKey = null;
@@ -413,7 +469,7 @@ document.addEventListener('DOMContentLoaded', () => {
             // new one in — this was the actual bug: sections were only
             // ever appended, never removed, so every section anyone had
             // opened stayed piled up in the popover together.
-            if (sectionsHome) { while (body.firstChild) sectionsHome.appendChild(body.firstChild); }
+            if (openKey) returnSection(openKey);
             body.appendChild(section);
             title.textContent = cfg.label;
             buttons.forEach(b => b.classList.toggle('active', b.dataset.target === key));
@@ -1693,10 +1749,13 @@ document.addEventListener('DOMContentLoaded', () => {
                 c.classList.toggle('fc-active', i === chipIndex);
             });
             document.getElementById('clear-filter').style.display = 'block';
-            // Move slider thumb to the start of the tier range
-            const mk = document.getElementById('legend-marker');
-            if (mk) mk.style.left = (range.min * 100).toFixed(1) + '%';
             applyThreshold();
+            // Move slider thumb to the road's actual score (not the tier's
+            // minimum). Must run AFTER applyThreshold(), since applyThreshold()
+            // itself repositions the thumb to `threshold` (the tier's min) —
+            // setting this before it would just get overwritten.
+            const mk = document.getElementById('legend-marker');
+            if (mk) mk.style.left = (score * 100).toFixed(1) + '%';
         }
 
         // Straight-line distance from a screen point to a segment, in

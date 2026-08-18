@@ -717,16 +717,24 @@
     <div class="dashboard-bg">
         <div class="panel-content">
 
-            <!-- Intro quote + dark toggle -->
+            <!-- Intro quote + About pill + dark toggle -->
             <div class="lp-intro">
                 <div class="lp-intro-top">
                     <p class="lp-intro-heading"><span><i class="ti ti-eye"></i> A Teen's Perspective</span></p>
-                    <div class="dark-toggle" id="dark-toggle" title="Toggle dark mode">
-                        <i class="ti ti-moon" id="dark-toggle-icon"></i>
+                    <div class="lp-intro-top-actions">
+                        <button class="about-toggle" id="about-toggle" title="About NetAScore4Teens" type="button" aria-expanded="false">
+                            <i class="ti ti-info-circle" id="about-toggle-icon"></i>
+                        </button>
+                        <div class="dark-toggle" id="dark-toggle" title="Toggle dark mode">
+                            <i class="ti ti-moon" id="dark-toggle-icon"></i>
+                        </div>
                     </div>
                 </div>
                 <p class="lp-intro-quote">Teens don't experience cities the same way adults do. A few minutes' walk or bike ride can feel unsafe, exciting, frustrating, or inspiring. Explore cities through their lens.</p>
             </div>
+
+            <!-- TAB: CONTROLS (existing panel content, unchanged) -->
+            <div class="lp-tab-panel active" id="lp-panel-controls">
 
             <div class="panel-section sec-city">
                 <h3><i class="ti ti-map-pin"></i> Choose a city</h3>
@@ -846,6 +854,61 @@
                     </span>
                 </div>
             </div>
+
+            </div><!-- end #lp-panel-controls -->
+
+            <!-- TAB: ABOUT -->
+            <div class="lp-tab-panel sec-about" id="lp-panel-about">
+                <div class="panel-section sec-about-inner">
+                    <h3><i class="ti ti-info-circle"></i> About NetAScore4Teens</h3>
+
+                    <p class="about-p">
+                        NetAScore4Teens is a child-centred mobility assessment
+                        <a href="https://github.com/urbanistamna/netascore_children" target="_blank" rel="noopener">model</a>
+                        and interactive geovisualization dashboard that evaluates how well city streets support
+                        children's independent walking and cycling. Built by adapting
+                        <a href="https://mobilitylab.zgis.at/en/netascore/" target="_blank" rel="noopener">NetAScore</a>,
+                        an open-source, segment-based walkability and bikeability model, it computes street-level
+                        scores entirely from OpenStreetMap data.
+                    </p>
+
+                    <div class="about-accordion">
+                        <div class="about-row" data-row="model">
+                            <button class="about-row-toggle" type="button" aria-expanded="false">
+                                <i class="ti ti-chevron-right about-row-chevron"></i>
+                                <i class="ti ti-brain about-row-icon"></i>
+                                <span>How the model works</span>
+                            </button>
+                            <div class="about-row-body">
+                                <p>
+                                    The model uses OSM-based indicators and attributes such as pedestrian and
+                                    cycling infrastructure and road category, alongside new indicators specifically
+                                    informed by literature and participatory workshops with teenagers: street
+                                    lighting, play and outdoor space, comfort facilities, attractiveness, and
+                                    eating facilities. Each new indicator was translated from what young people
+                                    expressed valuing about their everyday streets into specific, measurable
+                                    OSM tags.
+                                </p>
+                            </div>
+                        </div>
+                        <div class="about-row" data-row="dashboard">
+                            <button class="about-row-toggle" type="button" aria-expanded="false">
+                                <i class="ti ti-chevron-right about-row-chevron"></i>
+                                <i class="ti ti-map-2 about-row-icon"></i>
+                                <span>About the dashboard</span>
+                            </button>
+                            <div class="about-row-body">
+                                <p>
+                                    The resulting scores are visualized through an interactive dashboard, allowing
+                                    planners, researchers, and decision-makers to explore street-segment-level
+                                    walkability and bikeability, and to identify where cities currently fall short
+                                    of supporting children's independent mobility.
+                                </p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div><!-- end #lp-panel-about -->
 
         </div>
     </div>
@@ -1093,6 +1156,7 @@
          popover beside it. Map + bottom sheet get pushed right by the
          rail's width so nothing sits underneath it. -->
     <div class="mobile-nav-rail" id="mobile-nav-rail">
+        <button class="mobile-nav-btn" data-target="about" type="button" aria-label="About"><i class="ti ti-info-circle"></i></button>
         <button class="mobile-nav-btn" data-target="city" type="button" aria-label="City"><i class="ti ti-map-pin"></i></button>
         <button class="mobile-nav-btn" data-target="explore" type="button" aria-label="Mode"><i class="ti ti-compass"></i></button>
         <button class="mobile-nav-btn" data-target="filter" type="button" aria-label="Filter by score"><i class="ti ti-adjustments-horizontal"></i></button>
