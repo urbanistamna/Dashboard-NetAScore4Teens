@@ -1,5 +1,8 @@
 # NetAScore4Teens
-**Streets for Young People**: An interactive dashboard showing how walkable and bikeable streets are for teenagers, in Salzburg (Austria) and Olomouc (Czechia). The dashboard visualises results produced by the [NetAScore for Children](https://github.com/urbanistamna/netascore_children) pipeline; a modified version of the [NetAScore](https://github.com/plus-mobilitylab/netascore) walkability/bikeability indicator tool, adapted to reflect how teenagers and children experience street networks.
+## **Streets for Young People**
+An interactive dashboard showing how walkable and bikeable streets are for teenagers, in Salzburg (Austria) and Olomouc (Czechia).
+🔗 **[View the live dashboard →](https://urbanistamna.github.io/Dashboard-NetAScore4Teens/)**
+The dashboard visualises results produced by the [NetAScore for Children](https://github.com/urbanistamna/netascore_children) pipeline; a modified version of the [NetAScore](https://github.com/plus-mobilitylab/netascore) walkability/bikeability indicator tool, adapted to reflect how teenagers and children experience street networks.
 
 # Data Sources
 
